@@ -40,6 +40,15 @@
             transform: scale(0.95);
             pointer-events: none;
         }
+        /* Desabilitar setas do input number */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+          -webkit-appearance: none; 
+          margin: 0; 
+        }
+        input[type=number] {
+          -moz-appearance: textfield;
+        }
         .tower-card-img {
             width: 48px;
             height: 48px;
@@ -113,7 +122,6 @@
         const ASSETS = {
             towers: {},
             enemies: {},
-            maps: [],
         };
 
         function createSvgImage(svgString) {
@@ -121,175 +129,6 @@
             img.src = 'data:image/svg+xml;base64,' + btoa(svgString);
             return img;
         }
-
-        // --- Helpers para background SVG inline ---
-        function svgDataUri(svg) {
-            // Encode seguro em UTF-8
-            return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
-        }
-
-        // Coleção dos 3 SVGs (880x640) — tudo ASCII
-        const BG_SVG = {
-            office: `
-<svg xmlns="http://www.w3.org/2000/svg" width="880" height="640" viewBox="0 0 880 640">
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#f8fafc"/>
-      <stop offset="1" stop-color="#e5e7eb"/>
-    </linearGradient>
-    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-      <path d="M40 0H0V40" fill="none" stroke="#000" stroke-opacity="0.04" stroke-width="1"/>
-    </pattern>
-  </defs>
-  <rect width="880" height="640" fill="url(#bg)"/>
-  <rect width="880" height="640" fill="url(#grid)"/>
-
-  <!-- Mesas e monitores -->
-  <g fill="#f59e0b">
-    <rect x="50"  y="62"  width="60" height="36" rx="4"/>
-    <rect x="150" y="202" width="60" height="36" rx="4"/>
-    <rect x="50"  y="342" width="60" height="36" rx="4"/>
-    <rect x="650" y="102" width="60" height="36" rx="4"/>
-    <rect x="710" y="302" width="60" height="36" rx="4"/>
-    <rect x="570" y="442" width="60" height="36" rx="4"/>
-  </g>
-  <g fill="#0f172a">
-    <rect x="62"  y="72"  width="36" height="16" rx="2"/>
-    <rect x="162" y="212" width="36" height="16" rx="2"/>
-    <rect x="62"  y="352" width="36" height="16" rx="2"/>
-    <rect x="662" y="112" width="36" height="16" rx="2"/>
-    <rect x="722" y="312" width="36" height="16" rx="2"/>
-    <rect x="582" y="452" width="36" height="16" rx="2"/>
-  </g>
-
-  <!-- Plantas -->
-  <g>
-    <circle cx="260" cy="96"  r="10" fill="#22c55e"/>
-    <circle cx="320" cy="130" r="7"  fill="#16a34a"/>
-    <circle cx="220" cy="300" r="9"  fill="#22c55e"/>
-    <circle cx="800" cy="70"  r="8"  fill="#16a34a"/>
-    <circle cx="760" cy="420" r="10" fill="#22c55e"/>
-  </g>
-</svg>
-            `.trim(),
-
-            server: `
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="880" height="640" viewBox="0 0 880 640">
-  <defs>
-    <linearGradient id="dark" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#0b132b"/>
-      <stop offset="1" stop-color="#0b132b"/>
-    </linearGradient>
-    <g id="rack">
-      <rect width="110" height="90" fill="#1c2541" rx="6"/>
-      <rect x="10" y="10" width="90" height="10" fill="#3a506b" rx="2"/>
-      <rect x="10" y="25" width="90" height="10" fill="#3a506b" rx="2"/>
-      <rect x="10" y="40" width="90" height="10" fill="#3a506b" rx="2"/>
-      <rect x="10" y="55" width="90" height="10" fill="#3a506b" rx="2"/>
-      <rect x="10" y="70" width="90" height="10" fill="#3a506b" rx="2"/>
-      <rect x="96" y="14" width="6" height="10" fill="#00eeff" rx="1"/>
-      <rect x="96" y="28" width="6" height="10" fill="#ff3864" rx="1"/>
-    </g>
-  </defs>
-  <rect width="880" height="640" fill="url(#dark)"/>
-
-  <!-- Colunas de racks -->
-  <g transform="translate(40,30)">
-    <!-- linha 1 -->
-    <use xlink:href="#rack" href="#rack" x="0"   y="0"/>
-    <use xlink:href="#rack" href="#rack" x="160" y="0"/>
-    <use xlink:href="#rack" href="#rack" x="320" y="0"/>
-    <use xlink:href="#rack" href="#rack" x="480" y="0"/>
-    <use xlink:href="#rack" href="#rack" x="640" y="0"/>
-    <!-- linha 2 -->
-    <use xlink:href="#rack" href="#rack" x="0"   y="140"/>
-    <use xlink:href="#rack" href="#rack" x="160" y="140"/>
-    <use xlink:href="#rack" href="#rack" x="320" y="140"/>
-    <use xlink:href="#rack" href="#rack" x="480" y="140"/>
-    <use xlink:href="#rack" href="#rack" x="640" y="140"/>
-    <!-- linha 3 -->
-    <use xlink:href="#rack" href="#rack" x="0"   y="280"/>
-    <use xlink:href="#rack" href="#rack" x="160" y="280"/>
-    <use xlink:href="#rack" href="#rack" x="320" y="280"/>
-    <use xlink:href="#rack" href="#rack" x="480" y="280"/>
-    <use xlink:href="#rack" href="#rack" x="640" y="280"/>
-    <!-- linha 4 -->
-    <use xlink:href="#rack" href="#rack" x="0"   y="420"/>
-    <use xlink:href="#rack" href="#rack" x="160" y="420"/>
-    <use xlink:href="#rack" href="#rack" x="320" y="420"/>
-    <use xlink:href="#rack" href="#rack" x="480" y="420"/>
-    <use xlink:href="#rack" href="#rack" x="640" y="420"/>
-  </g>
-</svg>
-            `.trim(),
-
-            breakroom: `
-<svg xmlns="http://www.w3.org/2000/svg" width="880" height="640" viewBox="0 0 880 640">
-  <defs>
-    <pattern id="checker" width="80" height="80" patternUnits="userSpaceOnUse">
-      <rect x="0" y="0" width="80" height="80" fill="#e5e7eb"/>
-      <rect x="0" y="0" width="40" height="40" fill="#fafafa"/>
-      <rect x="40" y="40" width="40" height="40" fill="#fafafa"/>
-    </pattern>
-  </defs>
-  <rect width="880" height="640" fill="url(#checker)"/>
-  <!-- Bancadas -->
-  <rect x="40" y="60"  width="260" height="40" fill="#cbd5e1" rx="6"/>
-  <rect x="40" y="100" width="260" height="18" fill="#cbd5e1" rx="4"/>
-  <!-- Máquina de café -->
-  <rect x="50" y="65" width="60" height="30" fill="#9ca3af" rx="4"/>
-  <rect x="60" y="70" width="40" height="20" fill="#1e293b" rx="2"/>
-  <!-- Outros detalhes -->
-  <rect x="120" y="65" width="40" height="30" fill="#94a3b8" rx="4"/>
-  <circle cx="140" cy="80" r="6" fill="#0ea5e9"/>
-</svg>
-            `.trim()
-        };
-
-        // ------- FUNÇÕES AUXILIARES DE FUNDO --------
-        function drawImageCover(ctx, img, x, y, w, h) {
-            const rImg = img.width / img.height;
-            const rBox = w / h;
-            let dw, dh, dx, dy;
-            if (rImg > rBox) {
-                dh = h; dw = dh * rImg; dx = x - (dw - w) / 2; dy = y;
-            } else {
-                dw = w; dh = dw / rImg; dx = x; dy = y - (dh - h) / 2;
-            }
-            ctx.drawImage(img, dx, dy, dw, dh);
-        }
-
-        function drawProceduralBackground(mapIndex) {
-            switch (mapIndex) {
-                case 0: {
-                    const grd = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-                    grd.addColorStop(0, '#f8fafc'); grd.addColorStop(1, '#e5e7eb');
-                    ctx.fillStyle = grd; ctx.fillRect(0, 0, canvas.width, canvas.height);
-                    ctx.strokeStyle = 'rgba(0,0,0,0.04)'; ctx.lineWidth = 1;
-                    for (let x = 0; x <= canvas.width; x += 40) {
-                        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
-                    }
-                    for (let y = 0; y <= canvas.height; y += 40) {
-                        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
-                    }
-                    break;
-                }
-                case 1: {
-                    ctx.fillStyle = '#0b132b'; ctx.fillRect(0,0,canvas.width,canvas.height);
-                    break;
-                }
-                case 2: {
-                    for (let y = 0; y < canvas.height; y += 40) {
-                        for (let x = 0; x < canvas.width; x += 40) {
-                            ctx.fillStyle = ((x + y) / 40) % 2 === 0 ? '#fafafa' : '#e5e7eb';
-                            ctx.fillRect(x, y, 40, 40);
-                        }
-                    }
-                    break;
-                }
-            }
-        }
-        // ---------------------------------------------
 
         function defineAssets() {
             // Torres
@@ -319,42 +158,46 @@
                 createSvgImage(`<svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><g transform="translate(20,20) rotate(45)"><rect x="-12" y="-18" width="24" height="36" rx="5" fill="#111827"/><rect x="-10" y="-16" width="20" height="14" fill="#a7f3d0"/><rect x="-10" y="-1" width="20" height="5" fill="#1f2937"/><path d="M-10 6 L10 6 L10 18 L-10 18Z" fill="#374151" /><circle cx="0" cy="13" r="10" fill="#b91c1c"/><circle cx="0" cy="13" r="5" fill="#fca5a5"/></g></svg>`),
             ];
 
-            // Mapas (instanciar as imagens agora)
-            ASSETS.maps = Array.from({ length: MAPS.length }, () => new Image());
+            // Inimigos
+            ASSETS.enemies.bug = createSvgImage('<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z" fill="#22c55e"/><path d="M12 2v20" stroke="#166534" stroke-width="1"/><path d="M9.5 8a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm5 0a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" fill="#14532d"/><path d="M7 14s-2 2-4 2m14-2s2 2 4 2M7 10s-2-2-4-2m14 2s2-2 4-2" stroke="#14532d" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>');
+            ASSETS.enemies.glitch = createSvgImage(`<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M4 4 L20 4 L20 20 L4 20 Z" fill="#8b5cf6"/><rect x="6" y="9" width="4" height="6" fill="white"/><rect x="14" y="9" width="4" height="6" fill="white"/><rect x="7" y="10" width="2" height="4" fill="black"/><rect x="15" y="10" width="2" height="4" fill="black"/></svg>`);
+            ASSETS.enemies.crash = createSvgImage(`<svg viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="18" r="14" fill="#f97316"/><path d="M10 12 L26 28 M10 28 L26 12" stroke="#9a3412" stroke-width="4"/><circle cx="15" cy="15" r="3" fill="white"/><circle cx="21" cy="15" r="3" fill="white"/><circle cx="15" cy="15" r="1.5" fill="black"/><circle cx="21" cy="15" r="1.5" fill="black"/></svg>`);
+            ASSETS.enemies.boss = createSvgImage(`<svg viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg"><path d="M25 2 C12 2 2 12 2 25 C2 38 12 48 25 48 S48 38 48 25 C48 12 38 2 25 2Z" fill="#be123c"/><path d="M15 15 L22 25 L15 35 M35 15 L28 25 L35 35" stroke="white" stroke-width="4" fill="none"/><circle cx="25" cy="25" r="5" fill="#fca5a5"/><circle cx="25" cy="25" r="2" fill="#991b1b"/></svg>`);
+
         }
 
-        // PRELOADER ROBUSTO
         function preloadAssets(callback) {
-            const jobs = [];
-
-            const track = (img, setSrc) => {
-                jobs.push(
-                    new Promise((resolve) => {
-                        const done = () => resolve();
-                        if (img.complete && img.naturalHeight !== 0) return resolve();
-                        img.onload = done;
-                        img.onerror = (e) => { console.error("Falha ao carregar asset:", img.src || '(sem src)', e); done(); };
-                        if (setSrc) setSrc();
-                    })
-                );
-            };
-
-            // Mapas
-            MAPS.forEach((map, index) => {
-                const img = ASSETS.maps[index];
-                img.crossOrigin = 'anonymous';
-                track(img, () => { img.src = map.backgroundImage; });
-            });
-
-            // Torres e Inimigos
+            const assetsToLoad = [];
+            
+            // Adicionar todas as imagens de torres e inimigos
             for (const type in ASSETS.towers) {
-                ASSETS.towers[type].forEach((img) => track(img));
+                ASSETS.towers[type].forEach(img => assetsToLoad.push(img));
             }
             for (const type in ASSETS.enemies) {
-                track(ASSETS.enemies[type]);
+                assetsToLoad.push(ASSETS.enemies[type]);
             }
 
-            Promise.all(jobs).then(callback);
+            if (assetsToLoad.length === 0) {
+                callback();
+                return;
+            }
+
+            let loadedCount = 0;
+            assetsToLoad.forEach(asset => {
+                asset.onload = () => {
+                    loadedCount++;
+                    if (loadedCount === assetsToLoad.length) {
+                        callback();
+                    }
+                };
+                asset.onerror = () => { 
+                    console.error("Falha ao carregar asset:", asset.src);
+                    loadedCount++;
+                    if (loadedCount === assetsToLoad.length) {
+                        callback();
+                    }
+                }
+            });
         }
 
         // --- CONFIGURAÇÕES & ESTADO DO JOGO ---
@@ -412,7 +255,7 @@
                 { cost: 130, range: 130, fireRate: 140, slow: { factor: 0.4, duration: 150 }, projectile: { speed: 4, size: 9, color: '#d9f99d' } },
                 { cost: 220, range: 140, fireRate: 130, slow: { factor: 0.3, duration: 180 }, projectile: { speed: 4, size: 10, color: '#bef264' } },
             ]},
-            rubber_band: { name: 'Elástico', icon: 'ゴム', baseCost: 75, unlocksAtMap: 1, upgrades: [
+            rubber_band: { name: 'Elástico', icon: 'ゴム', baseCost: 75, unlocksAtMap: 1, upgrades: [ // Icon adjusted for visibility
                 { cost: 80, damage: 12, range: 110, fireRate: 90, splash: 30, projectile: { speed: 5, size: 5, color: '#f59e0b' } },
                 { cost: 150, damage: 20, range: 120, fireRate: 85, splash: 35, projectile: { speed: 5, size: 6, color: '#f59e0b' } },
                 { cost: 250, damage: 30, range: 130, fireRate: 80, splash: 40, projectile: { speed: 5, size: 7, color: '#f59e0b' } },
@@ -430,12 +273,11 @@
             crash: { health: 250, speed: 1, size: 18, staples: 5 },
             boss: { health: 2000, speed: 0.8, size: 25, staples: 25 },
         };
-
-        // --- MAPAS usando SVG inline (data URI) ---
+        
         const MAPS = [
-            { name: 'Escritório Aberto', backgroundImage: svgDataUri(BG_SVG.office), path: [{x:0,y:4},{x:5,y:4},{x:5,y:11},{x:15,y:11},{x:15,y:2},{x:22,y:2}] },
-            { name: 'Sala do Servidor', backgroundImage: svgDataUri(BG_SVG.server), path: [{x:0,y:8},{x:3,y:8},{x:3,y:2},{x:9,y:2},{x:9,y:13},{x:3,y:13},{x:3,y:10},{x:17,y:10},{x:17,y:4},{x:22,y:4}] },
-            { name: 'Copa', backgroundImage: svgDataUri(BG_SVG.breakroom), path: [{x:3,y:0},{x:3,y:5},{x:12,y:5},{x:12,y:2},{x:18,y:2},{x:18,y:8},{x:8,y:8},{x:8,y:13},{x:18,y:13},{x:18,y:16}] }
+            { name: 'Escritório Aberto', path: [{x:0,y:4},{x:5,y:4},{x:5,y:11},{x:15,y:11},{x:15,y:2},{x:22,y:2}] },
+            { name: 'Sala do Servidor', path: [{x:0,y:8},{x:3,y:8},{x:3,y:2},{x:9,y:2},{x:9,y:13},{x:3,y:13},{x:3,y:10},{x:17,y:10},{x:17,y:4},{x:22,y:4}] },
+            { name: 'Copa', path: [{x:3,y:0},{x:3,y:5},{x:12,y:5},{x:12,y:2},{x:18,y:2},{x:18,y:8},{x:8,y:8},{x:8,y:13},{x:18,y:13},{x:18,y:16}] }
         ];
 
         const WAVES = [
@@ -463,12 +305,12 @@
         class Enemy {
             constructor(type) {
                 const pathStart = MAPS[gameState.mapIndex].path[0];
-                this.x = pathStart.x * TILE_SIZE + TILE_SIZE / 2;
+                this.x = pathStart.x * TILE_SIZE;
                 this.y = pathStart.y * TILE_SIZE + TILE_SIZE / 2;
                 this.pathIndex = 0;
                 this.type = type;
                 this.spec = ENEMY_SPECS[type];
-                this.health = this.spec.health * (1 + (gameState.wave * 0.1));
+                this.health = this.spec.health * (1 + (gameState.wave * 0.1)); // Escala com a onda
                 this.maxHealth = this.health;
                 this.speed = this.spec.speed;
                 this.baseSpeed = this.spec.speed;
@@ -507,10 +349,11 @@
                 const img = ASSETS.enemies[this.type];
                 if (this.type === 'glitch') {
                     this.glitchTimer = (this.glitchTimer + 1) % 20;
-                    if (this.glitchTimer < 10) return; // flicker
+                    if (this.glitchTimer < 10) return; // Flickering effect
                 }
                 if (img && img.complete) {
-                    ctx.drawImage(img, this.x - img.width / 2, this.y - img.height / 2);
+                    const drawSize = this.size * 2.2;
+                    ctx.drawImage(img, this.x - drawSize / 2, this.y - drawSize / 2, drawSize, drawSize);
                 }
 
                 const healthPercentage = this.health / this.maxHealth;
@@ -597,8 +440,9 @@
                 if (img && img.complete) {
                     ctx.save();
                     ctx.translate(this.x, this.y);
-                    ctx.rotate(this.rotation + Math.PI / 2);
-                    ctx.drawImage(img, -img.width / 2, -img.height / 2);
+                    ctx.rotate(this.rotation + Math.PI / 2); // Adjust rotation to match asset orientation
+                    const drawSize = TILE_SIZE;
+                    ctx.drawImage(img, -drawSize / 2, -drawSize / 2, drawSize, drawSize);
                     ctx.restore();
                 }
             }
@@ -615,8 +459,9 @@
         }
 
         class Projectile {
-            constructor(x, y, target, tower) {
-                this.x = x; this.y = y;
+             constructor(x, y, target, tower) {
+                this.x = x;
+                this.y = y;
                 this.target = target;
                 this.tower = tower;
                 this.stats = tower.getStats();
@@ -642,17 +487,17 @@
             }
 
             hitTarget() {
-                if (this.stats.splash) {
+                if (this.stats.splash) { // Splash damage
                     gameState.enemies.forEach(enemy => {
                         if (getDistance(this.target, enemy) <= this.stats.splash) {
                             enemy.takeDamage(this.stats.damage);
                         }
                     });
-                } else if (this.stats.slow) {
-                    this.target.takeDamage(0);
+                } else if (this.stats.slow) { // Slow effect
+                    this.target.takeDamage(0); // No damage for highlighter
                     this.target.speed = this.target.baseSpeed * this.stats.slow.factor;
                     this.target.slowTimer = this.stats.slow.duration;
-                } else {
+                } else { // Single target damage
                     this.target.takeDamage(this.stats.damage);
                 }
             }
@@ -662,9 +507,9 @@
                 ctx.translate(this.x, this.y);
                 ctx.rotate(this.rotation);
                 ctx.fillStyle = this.stats.projectile.color;
-                if (this.tower.type === 'stapler') {
-                    ctx.fillRect(-5, -1, 10, 2);
-                } else {
+                if (this.tower.type === 'stapler') { // Draw staple shape
+                     ctx.fillRect(-5, -1, 10, 2);
+                } else { // Default circle
                     ctx.beginPath();
                     ctx.arc(0, 0, this.stats.projectile.size, 0, Math.PI * 2);
                     ctx.fill();
@@ -697,7 +542,7 @@
             if(gameState.waveInProgress) {
                 if(gameState.spawnTimer > 0) gameState.spawnTimer--;
                 else {
-                    const wavePart = gameState.currentWave?.enemies[gameState.spawnIndex];
+                    const wavePart = gameState.currentWave.enemies[gameState.spawnIndex];
                     if (wavePart && wavePart.spawned < wavePart.count) {
                         gameState.enemies.push(new Enemy(wavePart.type));
                         wavePart.spawned++;
@@ -708,22 +553,12 @@
                 }
             }
 
-            // Atualiza inimigos
-            const aliveEnemies = [];
-            for (const e of gameState.enemies) {
-                if (e.update() && e.health > 0) aliveEnemies.push(e);
-            }
-            gameState.enemies = aliveEnemies;
+            gameState.enemies.forEach(e => e.update());
+            gameState.towers.forEach(t => t.update());
+            gameState.projectiles.forEach(p => p.update());
 
-            // Atualiza torres
-            for (const t of gameState.towers) t.update();
-
-            // Atualiza projéteis (uma única passada)
-            const aliveProjectiles = [];
-            for (const p of gameState.projectiles) {
-                if (p.update()) aliveProjectiles.push(p);
-            }
-            gameState.projectiles = aliveProjectiles;
+            gameState.enemies = gameState.enemies.filter(e => e.health > 0 && e.pathIndex < MAPS[gameState.mapIndex].path.length - 1);
+            gameState.projectiles = gameState.projectiles.filter(p => p.update());
             
             updateUI();
 
@@ -738,13 +573,8 @@
 
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            const mapImage = ASSETS.maps[gameState.mapIndex];
-
-            if (mapImage && mapImage.complete && mapImage.naturalHeight !== 0) {
-                drawImageCover(ctx, mapImage, 0, 0, canvas.width, canvas.height);
-            } else {
-                drawProceduralBackground(gameState.mapIndex);
-            }
+            ctx.fillStyle = '#e5e7eb';
+            ctx.fillRect(0,0, canvas.width, canvas.height);
             
             drawMapPath();
 
@@ -788,7 +618,7 @@
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
             ctx.beginPath();
-            ctx.moveTo(path[0].x * TILE_SIZE + TILE_SIZE / 2, path[0].y * TILE_SIZE + TILE_SIZE / 2);
+            ctx.moveTo(path[0].x * TILE_SIZE, path[0].y * TILE_SIZE + TILE_SIZE / 2);
             for (let i = 1; i < path.length; i++) {
                 ctx.lineTo(path[i].x * TILE_SIZE + TILE_SIZE / 2, path[i].y * TILE_SIZE + TILE_SIZE / 2);
             }
@@ -1086,18 +916,6 @@
             const dx = obj1.x - obj2.x;
             const dy = obj1.y - obj2.y;
             return Math.sqrt(dx * dx + dy * dy);
-        }
-
-        // Helper opcional: trocar o fundo em runtime (pode colar um novo SVG e usar svgDataUri)
-        function setMapBackground(mapIndex, imageUrlOrSvg) {
-            const isSvg = imageUrlOrSvg.trim().startsWith('<');
-            const url = isSvg ? svgDataUri(imageUrlOrSvg) : imageUrlOrSvg;
-            MAPS[mapIndex].backgroundImage = url;
-            const img = ASSETS.maps[mapIndex];
-            img.crossOrigin = 'anonymous';
-            img.onload  = () => console.log('Novo fundo carregado:', MAPS[mapIndex].name);
-            img.onerror = (e) => console.error('Erro ao carregar fundo:', url, e);
-            img.src = url;
         }
 
         // --- INICIALIZAÇÃO DO JOGO ---
