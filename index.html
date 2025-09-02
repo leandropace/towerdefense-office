@@ -285,9 +285,9 @@
         };
         
         const MAPS = [
-            { name: 'Escritório Aberto', backgroundImage: 'https://storage.googleapis.com/gemini-prod-us-west1-assets/e65e68b32585287c_i4_2_map1.jpg', path: [{x:0,y:4},{x:5,y:4},{x:5,y:11},{x:15,y:11},{x:15,y:2},{x:22,y:2}] },
-            { name: 'Sala do Servidor', backgroundImage: 'https://storage.googleapis.com/gemini-prod-us-west1-assets/56f738cb34771f2a_i4_2_map2.jpg', path: [{x:0,y:8},{x:3,y:8},{x:3,y:2},{x:9,y:2},{x:9,y:13},{x:3,y:13},{x:3,y:10},{x:17,y:10},{x:17,y:4},{x:22,y:4}] },
-            { name: 'Copa', backgroundImage: 'https://storage.googleapis.com/gemini-prod-us-west1-assets/e162788e02237063_i4_2_map3.jpg', path: [{x:3,y:0},{x:3,y:5},{x:12,y:5},{x:12,y:2},{x:18,y:2},{x:18,y:8},{x:8,y:8},{x:8,y:13},{x:18,y:13},{x:18,y:16}] }
+            { name: 'Escritório Aberto', backgroundImage: 'https://storage.googleapis.com/static.progame.com/td_map_1_v2.png', path: [{x:0,y:4},{x:5,y:4},{x:5,y:11},{x:15,y:11},{x:15,y:2},{x:22,y:2}] },
+            { name: 'Sala do Servidor', backgroundImage: 'https://storage.googleapis.com/static.progame.com/td_map_2_v2.png', path: [{x:0,y:8},{x:3,y:8},{x:3,y:2},{x:9,y:2},{x:9,y:13},{x:3,y:13},{x:3,y:10},{x:17,y:10},{x:17,y:4},{x:22,y:4}] },
+            { name: 'Copa', backgroundImage: 'https://storage.googleapis.com/static.progame.com/td_map_3_v2.png', path: [{x:3,y:0},{x:3,y:5},{x:12,y:5},{x:12,y:2},{x:18,y:2},{x:18,y:8},{x:8,y:8},{x:8,y:13},{x:18,y:13},{x:18,y:16}] }
         ];
 
         const WAVES = [
@@ -691,7 +691,7 @@
             } else if (gameState.wave % 5 === 0 && gameState.mapIndex < MAPS.length - 1) {
                 let refund = 0;
                 gameState.towers.forEach(tower => {
-                    const upgradesCost = tower.spec.upgrades.slice(0, tower.level + 1).reduce((acc, u) => acc + u.cost, 0);
+                    const upgradesCost = tower.spec.upgrades.slice(0, tower.level).reduce((acc, u) => acc + u.cost, 0);
                     refund += tower.spec.baseCost + upgradesCost;
                 });
                 gameState.staples += refund;
