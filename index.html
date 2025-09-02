@@ -122,7 +122,6 @@
         const ASSETS = {
             towers: {},
             enemies: {},
-            maps: [],
         };
 
         function createSvgImage(svgString) {
@@ -165,21 +164,11 @@
             ASSETS.enemies.crash = createSvgImage(`<svg viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="18" r="14" fill="#f97316"/><path d="M10 12 L26 28 M10 28 L26 12" stroke="#9a3412" stroke-width="4"/><circle cx="15" cy="15" r="3" fill="white"/><circle cx="21" cy="15" r="3" fill="white"/><circle cx="15" cy="15" r="1.5" fill="black"/><circle cx="21" cy="15" r="1.5" fill="black"/></svg>`);
             ASSETS.enemies.boss = createSvgImage(`<svg viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg"><path d="M25 2 C12 2 2 12 2 25 C2 38 12 48 25 48 S48 38 48 25 C48 12 38 2 25 2Z" fill="#be123c"/><path d="M15 15 L22 25 L15 35 M35 15 L28 25 L35 35" stroke="white" stroke-width="4" fill="none"/><circle cx="25" cy="25" r="5" fill="#fca5a5"/><circle cx="25" cy="25" r="2" fill="#991b1b"/></svg>`);
 
-            // Mapas (são carregados dinamicamente, mas listados aqui para o preloader)
-            MAPS.forEach(map => ASSETS.maps.push(new Image()));
         }
 
         function preloadAssets(callback) {
             const assetsToLoad = [];
             
-            // Adicionar todas as imagens dos mapas
-            MAPS.forEach((map, index) => {
-                const img = ASSETS.maps[index];
-                img.crossOrigin = "Anonymous"; // Adicionado para evitar problemas de CORS
-                img.src = map.backgroundImage;
-                assetsToLoad.push(img);
-            });
-
             // Adicionar todas as imagens de torres e inimigos
             for (const type in ASSETS.towers) {
                 ASSETS.towers[type].forEach(img => assetsToLoad.push(img));
@@ -201,7 +190,7 @@
                         callback();
                     }
                 };
-                asset.onerror = () => { // Adicionado para depuração
+                asset.onerror = () => { 
                     console.error("Falha ao carregar asset:", asset.src);
                     loadedCount++;
                     if (loadedCount === assetsToLoad.length) {
@@ -286,9 +275,9 @@
         };
         
         const MAPS = [
-            { name: 'Escritório Aberto', backgroundImage: 'https://i.imgur.com/p1a3Jd9.png', path: [{x:0,y:4},{x:5,y:4},{x:5,y:11},{x:15,y:11},{x:15,y:2},{x:22,y:2}] },
-            { name: 'Sala do Servidor', backgroundImage: 'https://i.imgur.com/1n0n2Y2.png', path: [{x:0,y:8},{x:3,y:8},{x:3,y:2},{x:9,y:2},{x:9,y:13},{x:3,y:13},{x:3,y:10},{x:17,y:10},{x:17,y:4},{x:22,y:4}] },
-            { name: 'Copa', backgroundImage: 'https://i.imgur.com/yvY2p0A.png', path: [{x:3,y:0},{x:3,y:5},{x:12,y:5},{x:12,y:2},{x:18,y:2},{x:18,y:8},{x:8,y:8},{x:8,y:13},{x:18,y:13},{x:18,y:16}] }
+            { name: 'Escritório Aberto', path: [{x:0,y:4},{x:5,y:4},{x:5,y:11},{x:15,y:11},{x:15,y:2},{x:22,y:2}] },
+            { name: 'Sala do Servidor', path: [{x:0,y:8},{x:3,y:8},{x:3,y:2},{x:9,y:2},{x:9,y:13},{x:3,y:13},{x:3,y:10},{x:17,y:10},{x:17,y:4},{x:22,y:4}] },
+            { name: 'Copa', path: [{x:3,y:0},{x:3,y:5},{x:12,y:5},{x:12,y:2},{x:18,y:2},{x:18,y:8},{x:8,y:8},{x:8,y:13},{x:18,y:13},{x:18,y:16}] }
         ];
 
         const WAVES = [
@@ -582,13 +571,8 @@
 
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            const mapImage = ASSETS.maps[gameState.mapIndex];
-            if (mapImage && mapImage.complete && mapImage.naturalHeight !== 0) {
-                ctx.drawImage(mapImage, 0, 0, canvas.width, canvas.height);
-            } else {
-                ctx.fillStyle = '#e5e7eb';
-                ctx.fillRect(0,0, canvas.width, canvas.height);
-            }
+            ctx.fillStyle = '#e5e7eb';
+            ctx.fillRect(0,0, canvas.width, canvas.height);
             
             drawMapPath();
 
