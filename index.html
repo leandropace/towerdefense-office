@@ -99,7 +99,7 @@
         <canvas id="gameCanvas" width="880" height="640"></canvas>
         <div id="modal" class="modal modal-hidden absolute inset-0 bg-black bg-opacity-75 flex flex-col items-center justify-center text-white text-center p-8 rounded-lg">
             <h2 id="modal-title" class="text-5xl font-bold mb-4"></h2>
-            <p id="modal-text" class="text-lg mb-6"></p>
+            <p id="modal-text" class="text-lg mb-6 whitespace-pre-wrap"></p>
             <button id="modal-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-8 rounded-lg text-xl"></button>
         </div>
     </div>
@@ -109,10 +109,9 @@
         const ctx = canvas.getContext('2d');
         
         // --- ASSETS ---
-        const backgroundImage = new Image();
-        backgroundImage.src = 'https://storage.googleapis.com/gemini-prod-us-west1-assets/993c1f7b50596e1b_i4_2_table_background.png';
+        const currentMapImage = new Image();
         let backgroundReady = false;
-        backgroundImage.onload = () => {
+        currentMapImage.onload = () => {
             backgroundReady = true;
         };
 
@@ -153,27 +152,27 @@
 
         // --- DEFINIÇÕES DE TORRES, INIMIGOS, MAPAS E ONDAS ---
         const TOWER_SPECS = {
-            tack: { name: 'Tachinha', icon: '📍', baseCost: 15, upgrades: [
+            tack: { name: 'Tachinha', icon: '📍', baseCost: 15, unlocksAtMap: 0, upgrades: [
                 { cost: 20, damage: 8, range: 90, fireRate: 25, projectile: { speed: 6, size: 3, color: '#6b7280' } },
                 { cost: 40, damage: 15, range: 100, fireRate: 20, projectile: { speed: 6, size: 4, color: '#4b5563' } },
                 { cost: 75, damage: 25, range: 110, fireRate: 15, projectile: { speed: 7, size: 5, color: '#1f2937' } },
             ]},
-            stapler: { name: 'Grampeador', icon: '📎', baseCost: 40, upgrades: [
+            stapler: { name: 'Grampeador', icon: '📎', baseCost: 40, unlocksAtMap: 0, upgrades: [
                 { cost: 50, damage: 18, range: 100, fireRate: 50, burst: 3, projectile: { speed: 7, size: 4, color: '#a1a1aa'} },
                 { cost: 100, damage: 30, range: 110, fireRate: 45, burst: 3, projectile: { speed: 7, size: 4, color: '#a1a1aa'} },
                 { cost: 180, damage: 45, range: 120, fireRate: 40, burst: 4, projectile: { speed: 8, size: 5, color: '#a1a1aa'} },
             ]},
-            rubber_band: { name: 'Elástico', icon: 'ゴム', baseCost: 75, upgrades: [ // Icon adjusted for visibility
-                { cost: 80, damage: 12, range: 110, fireRate: 90, splash: 30, projectile: { speed: 5, size: 5, color: '#f59e0b' } },
-                { cost: 150, damage: 20, range: 120, fireRate: 85, splash: 35, projectile: { speed: 5, size: 6, color: '#f59e0b' } },
-                { cost: 250, damage: 30, range: 130, fireRate: 80, splash: 40, projectile: { speed: 5, size: 7, color: '#f59e0b' } },
-            ]},
-            highlighter: { name: 'Marca-Texto', icon: '🖍️', baseCost: 60, upgrades: [
+            highlighter: { name: 'Marca-Texto', icon: '🖍️', baseCost: 60, unlocksAtMap: 0, upgrades: [
                 { cost: 70, range: 120, fireRate: 150, slow: { factor: 0.5, duration: 120 }, projectile: { speed: 4, size: 8, color: '#ecfccb' } },
                 { cost: 130, range: 130, fireRate: 140, slow: { factor: 0.4, duration: 150 }, projectile: { speed: 4, size: 9, color: '#d9f99d' } },
                 { cost: 220, range: 140, fireRate: 130, slow: { factor: 0.3, duration: 180 }, projectile: { speed: 4, size: 10, color: '#bef264' } },
             ]},
-            calculator: { name: 'Calculadora', icon: '🧮', baseCost: 120, upgrades: [
+            rubber_band: { name: 'Elástico', icon: 'ゴム', baseCost: 75, unlocksAtMap: 1, upgrades: [ // Icon adjusted for visibility
+                { cost: 80, damage: 12, range: 110, fireRate: 90, splash: 30, projectile: { speed: 5, size: 5, color: '#f59e0b' } },
+                { cost: 150, damage: 20, range: 120, fireRate: 85, splash: 35, projectile: { speed: 5, size: 6, color: '#f59e0b' } },
+                { cost: 250, damage: 30, range: 130, fireRate: 80, splash: 40, projectile: { speed: 5, size: 7, color: '#f59e0b' } },
+            ]},
+            calculator: { name: 'Calculadora', icon: '🧮', baseCost: 120, unlocksAtMap: 2, upgrades: [
                 { cost: 150, damage: 100, range: 250, fireRate: 200, projectile: { speed: 10, size: 6, color: '#ef4444' } },
                 { cost: 250, damage: 220, range: 280, fireRate: 190, projectile: { speed: 10, size: 7, color: '#dc2626' } },
                 { cost: 400, damage: 450, range: 320, fireRate: 180, projectile: { speed: 12, size: 8, color: '#b91c1c' } },
@@ -188,9 +187,9 @@
         };
         
         const MAPS = [
-            { name: 'Escritório Aberto', path: [{x:0,y:4},{x:5,y:4},{x:5,y:11},{x:15,y:11},{x:15,y:2},{x:22,y:2}] },
-            { name: 'Sala do Servidor', path: [{x:0,y:8},{x:3,y:8},{x:3,y:2},{x:9,y:2},{x:9,y:13},{x:3,y:13},{x:3,y:10},{x:17,y:10},{x:17,y:4},{x:22,y:4}] },
-            { name: 'Copa', path: [{x:3,y:0},{x:3,y:5},{x:12,y:5},{x:12,y:2},{x:18,y:2},{x:18,y:8},{x:8,y:8},{x:8,y:13},{x:18,y:13},{x:18,y:16}] }
+            { name: 'Escritório Aberto', backgroundImage: 'https://storage.googleapis.com/gemini-prod-us-west1-assets/e65e68b32585287c_i4_2_map1.jpg', path: [{x:0,y:4},{x:5,y:4},{x:5,y:11},{x:15,y:11},{x:15,y:2},{x:22,y:2}] },
+            { name: 'Sala do Servidor', backgroundImage: 'https://storage.googleapis.com/gemini-prod-us-west1-assets/56f738cb34771f2a_i4_2_map2.jpg', path: [{x:0,y:8},{x:3,y:8},{x:3,y:2},{x:9,y:2},{x:9,y:13},{x:3,y:13},{x:3,y:10},{x:17,y:10},{x:17,y:4},{x:22,y:4}] },
+            { name: 'Copa', backgroundImage: 'https://storage.googleapis.com/gemini-prod-us-west1-assets/e162788e02237063_i4_2_map3.jpg', path: [{x:3,y:0},{x:3,y:5},{x:12,y:5},{x:12,y:2},{x:18,y:2},{x:18,y:8},{x:8,y:8},{x:8,y:13},{x:18,y:13},{x:18,y:16}] }
         ];
 
         const WAVES = [
@@ -349,6 +348,15 @@
                 ctx.textBaseline = 'middle';
                 ctx.fillStyle = '#fff';
                 ctx.fillText(this.spec.icon, this.x, this.y);
+
+                // Level indicator
+                if (this.level > 0) {
+                    ctx.fillStyle = '#3b82f6';
+                    ctx.font = 'bold 10px Inter, sans-serif';
+                    ctx.textAlign = 'right';
+                    ctx.textBaseline = 'bottom';
+                    ctx.fillText(`Lvl ${this.level + 1}`, this.x + TILE_SIZE/2 - 8, this.y + TILE_SIZE/2 - 8);
+                }
             }
 
             drawRange() {
@@ -411,6 +419,7 @@
         
         // --- FUNÇÕES PRINCIPAIS DO JOGO ---
         function init() {
+            loadMapAssets();
             populateTowerShop();
             setupEventListeners();
             showModal('Office Uprising', `Os "Bugs" estão atacando! Proteja a Máquina de Café a todo custo.`, 'Começar', () => changeStatus('PLAYING'));
@@ -468,7 +477,7 @@
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             if (backgroundReady) {
-                ctx.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
+                ctx.drawImage(currentMapImage, 0, 0, canvas.width, canvas.height);
             } else {
                 ctx.fillStyle = '#e5e7eb';
                 ctx.fillRect(0,0, canvas.width, canvas.height);
@@ -480,11 +489,18 @@
                 drawPlacementPreview();
             }
 
+            gameState.towers.forEach(t => t.draw());
+            
             if(gameState.selectedPlacedTower) {
                 gameState.selectedPlacedTower.drawRange();
+                // Draw selection highlight
+                ctx.strokeStyle = '#3b82f6'; // blue-500
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(gameState.selectedPlacedTower.x, gameState.selectedPlacedTower.y, TILE_SIZE / 2 - 2, 0, Math.PI * 2);
+                ctx.stroke();
             }
-
-            gameState.towers.forEach(t => t.draw());
+            
             gameState.enemies.forEach(e => e.draw());
             gameState.projectiles.forEach(p => p.draw());
         }
@@ -531,7 +547,6 @@
         }
 
         function startWave() {
-            // BUG FIX: Prevent starting a wave if game is not in 'PLAYING' state or wave is already in progress
             if (gameState.status !== 'PLAYING' || gameState.waveInProgress) return;
             
             gameState.wave++;
@@ -556,10 +571,31 @@
                 changeStatus('VICTORY');
                 showModal('Vitória!', 'Você defendeu a máquina de café e salvou o dia!', 'Jogar Novamente', resetGame);
             } else if (gameState.wave % 5 === 0 && gameState.mapIndex < MAPS.length - 1) {
+                
+                // Sell all towers and refund full value
+                let refund = 0;
+                gameState.towers.forEach(tower => {
+                    const upgradesCost = tower.spec.upgrades.slice(0, tower.level + 1).reduce((acc, u) => acc + u.cost, 0);
+                    refund += tower.spec.baseCost + upgradesCost;
+                });
+                gameState.staples += refund;
+                gameState.towers = [];
+                deselectAll();
+
+                const oldMapIndex = gameState.mapIndex;
                 gameState.mapIndex++;
-                // BUG FIX: Change status to pause the game until modal is dismissed
+                loadMapAssets(); // Load new background
+                const newTowers = getNewUnlocks(oldMapIndex, gameState.mapIndex);
+
+                let modalText = `Você avançou para a ${MAPS[gameState.mapIndex].name}!\nTodas as suas defesas foram vendidas pelo valor total.`;
+
+                if (newTowers.length > 0) {
+                    modalText += `\n\nNovas defesas desbloqueadas:\n${newTowers.map(t => `${t.icon} ${t.name}`).join('\n')}`;
+                }
+                
+                populateTowerShop();
                 changeStatus('LEVEL_TRANSITION');
-                showModal('Novo Nível!', `Você avançou para a ${MAPS[gameState.mapIndex].name}!`, 'Continuar', () => {
+                showModal('Novo Nível!', modalText, 'Continuar', () => {
                     changeStatus('PLAYING');
                 });
             }
@@ -570,6 +606,7 @@
             gameState.health = 20;
             gameState.wave = 0;
             gameState.mapIndex = 0;
+            loadMapAssets();
             gameState.enemies = [];
             gameState.towers = [];
             gameState.projectiles = [];
@@ -577,7 +614,13 @@
             deselectAll();
             startWaveBtn.disabled = false;
             startWaveBtn.textContent = 'INICIAR ONDA';
+            populateTowerShop();
             changeStatus('PLAYING');
+        }
+
+        function loadMapAssets() {
+            backgroundReady = false;
+            currentMapImage.src = MAPS[gameState.mapIndex].backgroundImage;
         }
 
         // --- FUNÇÕES DE UI ---
@@ -601,9 +644,12 @@
                     upgradeBtn.textContent = `Upgrade (📎 ${nextUpgrade.cost})`;
                     upgradeBtn.classList.remove('hidden');
                 } else {
-                    upgradeBtn.classList.add('hidden');
+                    upgradeBtn.textContent = 'Nível Máximo';
+                    upgradeBtn.disabled = true;
                 }
-                const sellValue = Math.floor((tower.spec.baseCost + tower.spec.upgrades.slice(0, tower.level + 1).reduce((acc, u) => acc + u.cost, 0)) * 0.75);
+                const upgradesCost = tower.spec.upgrades.slice(0, tower.level).reduce((acc, u) => acc + u.cost, 0);
+                const totalValue = tower.spec.baseCost + upgradesCost;
+                const sellValue = Math.floor(totalValue * 0.75);
                 sellBtn.textContent = `Vender (📎 ${sellValue})`;
             } else {
                 upgradePanelEl.classList.add('hidden');
@@ -614,18 +660,31 @@
             towerSelectionEl.innerHTML = '';
             for (const key in TOWER_SPECS) {
                 const spec = TOWER_SPECS[key];
-                const card = document.createElement('div');
-                card.className = 'tower-card bg-gray-50 p-2 rounded-lg cursor-pointer flex items-center gap-4';
-                card.dataset.towerType = key;
-                card.innerHTML = `
-                    <div class="w-12 h-12 bg-gray-200 rounded-md flex items-center justify-center text-3xl">${spec.icon}</div>
-                    <div>
-                        <h3 class="font-semibold text-gray-800">${spec.name}</h3>
-                        <p class="font-bold text-gray-600">📎 ${spec.baseCost}</p>
-                    </div>
-                `;
-                towerSelectionEl.appendChild(card);
+                if (gameState.mapIndex >= spec.unlocksAtMap) {
+                    const card = document.createElement('div');
+                    card.className = 'tower-card bg-gray-50 p-2 rounded-lg cursor-pointer flex items-center gap-4';
+                    card.dataset.towerType = key;
+                    card.innerHTML = `
+                        <div class="w-12 h-12 bg-gray-200 rounded-md flex items-center justify-center text-3xl">${spec.icon}</div>
+                        <div>
+                            <h3 class="font-semibold text-gray-800">${spec.name}</h3>
+                            <p class="font-bold text-gray-600">📎 ${spec.baseCost}</p>
+                        </div>
+                    `;
+                    towerSelectionEl.appendChild(card);
+                }
             }
+        }
+
+        function getNewUnlocks(oldMapIndex, newMapIndex) {
+            const newUnlocks = [];
+            for (const key in TOWER_SPECS) {
+                const spec = TOWER_SPECS[key];
+                if (spec.unlocksAtMap > oldMapIndex && spec.unlocksAtMap <= newMapIndex) {
+                    newUnlocks.push(spec);
+                }
+            }
+            return newUnlocks;
         }
         
         function showModal(title, text, btnText, callback) {
@@ -715,7 +774,9 @@
             sellBtn.addEventListener('click', () => {
                 const tower = gameState.selectedPlacedTower;
                 if (!tower) return;
-                const sellValue = Math.floor((tower.spec.baseCost + tower.spec.upgrades.slice(0, tower.level + 1).reduce((acc, u) => acc + u.cost, 0)) * 0.75);
+                const upgradesCost = tower.spec.upgrades.slice(0, tower.level + 1).reduce((acc, u) => acc + u.cost, 0);
+                const totalValue = tower.spec.baseCost + upgradesCost;
+                const sellValue = Math.floor(totalValue * 0.75);
                 gameState.staples += sellValue;
                 gameState.towers = gameState.towers.filter(t => t !== tower);
                 deselectAll();
