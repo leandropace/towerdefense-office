@@ -91,7 +91,10 @@
         </div>
 
         <div class="flex-grow"></div>
-        <button id="start-wave-btn" class="mt-4 w-full bg-green-500 hover:bg-green-600 text-white text-xl font-bold py-3 rounded-lg shadow-md transition-transform transform hover:scale-105">INICIAR ONDA</button>
+        <div class="flex gap-2 mt-4">
+            <button id="start-wave-btn" class="w-full bg-green-500 hover:bg-green-600 text-white text-xl font-bold py-3 rounded-lg shadow-md transition-transform transform hover:scale-105">INICIAR ONDA</button>
+            <button id="pause-btn" class="flex-shrink-0 w-16 bg-gray-500 hover:bg-gray-600 text-white text-2xl font-bold py-3 rounded-lg shadow-md transition-transform transform hover:scale-105" disabled>⏸️</button>
+        </div>
     </div>
 
     <!-- Área do Jogo -->
@@ -110,11 +113,7 @@
         
         // --- ASSETS ---
         const currentMapImage = new Image();
-        let backgroundReady = false;
-        currentMapImage.onload = () => {
-            backgroundReady = true;
-        };
-
+        
         // --- CONFIGURAÇÕES & ESTADO DO JOGO ---
         const TILE_SIZE = 40;
         let gameState = {
@@ -122,7 +121,7 @@
             health: 20,
             wave: 0,
             mapIndex: 0,
-            status: 'START', // START, PLAYING, WAVEOVER, GAMEOVER, VICTORY, LEVEL_TRANSITION
+            status: 'START', // START, PLAYING, PAUSED, WAVEOVER, GAMEOVER, VICTORY, LEVEL_TRANSITION
             enemies: [],
             towers: [],
             projectiles: [],
@@ -133,7 +132,9 @@
             mouse: { x: 0, y: 0, down: false },
             currentWave: null,
             spawnTimer: 0,
-            spawnIndex: 0
+            spawnIndex: 0,
+            waveEndTimer: null,
+            waveEndCountdown: 10,
         };
         
         // --- ELEMENTOS DA UI ---
@@ -149,6 +150,7 @@
         const upgradeTowerRangeEl = document.getElementById('upgrade-tower-range');
         const upgradeBtn = document.getElementById('upgrade-btn');
         const sellBtn = document.getElementById('sell-btn');
+        const pauseBtn = document.getElementById('pause-btn');
 
         // --- DEFINIÇÕES DE TORRES, INIMIGOS, MAPAS E ONDAS ---
         const TOWER_SPECS = {
@@ -193,16 +195,24 @@
         ];
 
         const WAVES = [
+            // Map 1: Waves 1-5
             { enemies: [{ type: 'bug', count: 10, delay: 50 }] },
             { enemies: [{ type: 'bug', count: 15, delay: 45 }] },
             { enemies: [{ type: 'bug', count: 10, delay: 40 }, { type: 'glitch', count: 5, delay: 100 }] },
             { enemies: [{ type: 'glitch', count: 15, delay: 50 }] },
             { enemies: [{ type: 'crash', count: 3, delay: 150 }] },
+            // Map 2: Waves 6-10
             { enemies: [{ type: 'bug', count: 20, delay: 30 }, { type: 'glitch', count: 10, delay: 80 }] },
             { enemies: [{ type: 'crash', count: 5, delay: 120 }, { type: 'glitch', count: 10, delay: 100 }] },
             { enemies: [{ type: 'bug', count: 50, delay: 20 }] },
             { enemies: [{ type: 'crash', count: 10, delay: 100 }] },
             { enemies: [{ type: 'boss', count: 1, delay: 100 }] },
+            // Map 3: Waves 11-15
+            { enemies: [{ type: 'bug', count: 30, delay: 25 }, { type: 'crash', count: 5, delay: 150 }] },
+            { enemies: [{ type: 'glitch', count: 40, delay: 30 }] },
+            { enemies: [{ type: 'crash', count: 15, delay: 80 }] },
+            { enemies: [{ type: 'boss', count: 1, delay: 100 }, { type: 'glitch', count: 20, delay: 90 }] },
+            { enemies: [{ type: 'boss', count: 2, delay: 250 }, { type: 'bug', count: 20, delay: 50 }] },
         ];
         
         // --- CLASSES DE JOGO ---
@@ -446,9 +456,6 @@
                         gameState.spawnTimer = wavePart.delay;
                     } else if (wavePart && wavePart.spawned >= wavePart.count) {
                         gameState.spawnIndex++;
-                        if (gameState.spawnIndex >= gameState.currentWave.enemies.length) {
-                             // All parts of wave spawned
-                        }
                     }
                 }
             }
@@ -476,7 +483,7 @@
 
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            if (backgroundReady) {
+            if (currentMapImage.complete && currentMapImage.naturalHeight !== 0) {
                 ctx.drawImage(currentMapImage, 0, 0, canvas.width, canvas.height);
             } else {
                 ctx.fillStyle = '#e5e7eb';
@@ -503,6 +510,20 @@
             
             gameState.enemies.forEach(e => e.draw());
             gameState.projectiles.forEach(p => p.draw());
+
+            if (gameState.status === 'PAUSED') {
+                drawPauseOverlay();
+            }
+        }
+
+        function drawPauseOverlay() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 48px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('JOGO PAUSADO', canvas.width / 2, canvas.height / 2);
         }
 
         function drawMap() {
@@ -521,7 +542,6 @@
             ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
             ctx.lineWidth = TILE_SIZE + 4;
             ctx.stroke();
-
 
             // Draw base (coffee machine)
             const endPoint = path[path.length - 1];
@@ -547,12 +567,17 @@
         }
 
         function startWave() {
+            if (gameState.waveEndTimer) {
+                clearInterval(gameState.waveEndTimer);
+                gameState.waveEndTimer = null;
+            }
             if (gameState.status !== 'PLAYING' || gameState.waveInProgress) return;
             
             gameState.wave++;
             gameState.waveInProgress = true;
             startWaveBtn.disabled = true;
             startWaveBtn.textContent = `ONDA ${gameState.wave} EM CURSO`;
+            pauseBtn.disabled = false;
             
             const waveData = JSON.parse(JSON.stringify(WAVES[gameState.wave -1])); // Deep copy
             waveData.enemies.forEach(part => part.spawned = 0);
@@ -564,18 +589,16 @@
         function endWave() {
             gameState.waveInProgress = false;
             startWaveBtn.disabled = false;
-            startWaveBtn.textContent = 'INICIAR PRÓXIMA ONDA';
+            pauseBtn.disabled = true;
             gameState.staples += 100 + gameState.wave * 10;
 
             if (gameState.wave >= WAVES.length) {
                 changeStatus('VICTORY');
                 showModal('Vitória!', 'Você defendeu a máquina de café e salvou o dia!', 'Jogar Novamente', resetGame);
             } else if (gameState.wave % 5 === 0 && gameState.mapIndex < MAPS.length - 1) {
-                
-                // Sell all towers and refund full value
                 let refund = 0;
                 gameState.towers.forEach(tower => {
-                    const upgradesCost = tower.spec.upgrades.slice(0, tower.level + 1).reduce((acc, u) => acc + u.cost, 0);
+                    const upgradesCost = tower.spec.upgrades.slice(0, tower.level).reduce((acc, u) => acc + u.cost, 0);
                     refund += tower.spec.baseCost + upgradesCost;
                 });
                 gameState.staples += refund;
@@ -584,7 +607,7 @@
 
                 const oldMapIndex = gameState.mapIndex;
                 gameState.mapIndex++;
-                loadMapAssets(); // Load new background
+                loadMapAssets();
                 const newTowers = getNewUnlocks(oldMapIndex, gameState.mapIndex);
 
                 let modalText = `Você avançou para a ${MAPS[gameState.mapIndex].name}!\nTodas as suas defesas foram vendidas pelo valor total.`;
@@ -597,11 +620,32 @@
                 changeStatus('LEVEL_TRANSITION');
                 showModal('Novo Nível!', modalText, 'Continuar', () => {
                     changeStatus('PLAYING');
+                    startWaveEndTimer();
                 });
+            } else {
+                startWaveEndTimer();
+            }
+        }
+        
+        function startWaveEndTimer() {
+            gameState.waveEndCountdown = 10;
+            startWaveBtn.textContent = `PRÓXIMA ONDA EM ${gameState.waveEndCountdown}`;
+            gameState.waveEndTimer = setInterval(updateWaveEndTimer, 1000);
+        }
+
+        function updateWaveEndTimer() {
+            gameState.waveEndCountdown--;
+            startWaveBtn.textContent = `PRÓXIMA ONDA EM ${gameState.waveEndCountdown}`;
+            if (gameState.waveEndCountdown <= 0) {
+                startWave();
             }
         }
         
         function resetGame() {
+            if (gameState.waveEndTimer) {
+                clearInterval(gameState.waveEndTimer);
+                gameState.waveEndTimer = null;
+            }
             gameState.staples = 200;
             gameState.health = 20;
             gameState.wave = 0;
@@ -614,12 +658,12 @@
             deselectAll();
             startWaveBtn.disabled = false;
             startWaveBtn.textContent = 'INICIAR ONDA';
+            pauseBtn.disabled = true;
             populateTowerShop();
             changeStatus('PLAYING');
         }
 
         function loadMapAssets() {
-            backgroundReady = false;
             currentMapImage.src = MAPS[gameState.mapIndex].backgroundImage;
         }
 
@@ -734,7 +778,6 @@
             });
 
             canvas.addEventListener('click', () => {
-                // Prevent clicking on canvas if a modal is open
                 if (gameState.status !== 'PLAYING') return;
 
                 const gridX = Math.floor(gameState.mouse.x / TILE_SIZE) * TILE_SIZE + TILE_SIZE / 2;
@@ -774,7 +817,7 @@
             sellBtn.addEventListener('click', () => {
                 const tower = gameState.selectedPlacedTower;
                 if (!tower) return;
-                const upgradesCost = tower.spec.upgrades.slice(0, tower.level + 1).reduce((acc, u) => acc + u.cost, 0);
+                const upgradesCost = tower.spec.upgrades.slice(0, tower.level).reduce((acc, u) => acc + u.cost, 0);
                 const totalValue = tower.spec.baseCost + upgradesCost;
                 const sellValue = Math.floor(totalValue * 0.75);
                 gameState.staples += sellValue;
@@ -783,6 +826,16 @@
             });
 
             startWaveBtn.addEventListener('click', startWave);
+            
+            pauseBtn.addEventListener('click', () => {
+                if(gameState.status === 'PLAYING') {
+                    gameState.status = 'PAUSED';
+                    pauseBtn.innerHTML = '▶️';
+                } else if (gameState.status === 'PAUSED') {
+                    gameState.status = 'PLAYING';
+                    pauseBtn.innerHTML = '⏸️';
+                }
+            });
         }
 
         function getDistance(obj1, obj2) {
