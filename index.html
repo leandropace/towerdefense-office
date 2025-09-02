@@ -171,7 +171,6 @@
         function preloadAssets(callback) {
             const assetsToLoad = [];
             
-            // Adicionar todas as imagens de torres e inimigos
             for (const type in ASSETS.towers) {
                 ASSETS.towers[type].forEach(img => assetsToLoad.push(img));
             }
@@ -540,10 +539,11 @@
         
         // --- FUNÇÕES PRINCIPAIS DO JOGO ---
         function init() {
-            showDifficultySelection();
+            showModal('Carregando...', 'Preparando o material de escritório...', '', ()=>{});
             defineAssets();
             preloadAssets(() => {
-                // Assets are ready, game can start after user selection
+                setupEventListeners();
+                showDifficultySelection();
             });
         }
 
@@ -994,4 +994,5 @@
     </script>
 </body>
 </html>
+
 
