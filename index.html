@@ -160,7 +160,7 @@
             ];
 
             // Inimigos
-            ASSETS.enemies.bug = createSvgImage(`<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="9" fill="#22c55e"/><circle cx="10" cy="10" r="2" fill="white"/><circle cx="14" cy="10" r="2" fill="white"/><circle cx="10" cy="10" r="1" fill="black"/><circle cx="14" cy="10" r="1" fill="black"/><path d="M8 15 Q12 17 16 15" stroke="black" stroke-width="1.5" fill="none"/></svg>`);
+            ASSETS.enemies.bug = createSvgImage('<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="8" fill="#22c55e"/><path d="M12 4 L12 20" stroke="black" stroke-width="0.5"/><circle cx="9.5" cy="8" r="1.2" fill="black"/><circle cx="14.5" cy="8" r="1.2" fill="black"/><circle cx="9.5" cy="12" r="1.2" fill="black"/><circle cx="14.5" cy="12" r="1.2" fill="black"/><circle cx="12" cy="16" r="1.2" fill="black"/><path d="M12 4 C10 2 8 2 7 4" stroke="black" stroke-width="1" fill="none"/><path d="M12 4 C14 2 16 2 17 4" stroke="black" stroke-width="1" fill="none"/></svg>');
             ASSETS.enemies.glitch = createSvgImage(`<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M4 4 L20 4 L20 20 L4 20 Z" fill="#8b5cf6"/><rect x="6" y="9" width="4" height="6" fill="white"/><rect x="14" y="9" width="4" height="6" fill="white"/><rect x="7" y="10" width="2" height="4" fill="black"/><rect x="15" y="10" width="2" height="4" fill="black"/></svg>`);
             ASSETS.enemies.crash = createSvgImage(`<svg viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="18" r="14" fill="#f97316"/><path d="M10 12 L26 28 M10 28 L26 12" stroke="#9a3412" stroke-width="4"/><circle cx="15" cy="15" r="3" fill="white"/><circle cx="21" cy="15" r="3" fill="white"/><circle cx="15" cy="15" r="1.5" fill="black"/><circle cx="21" cy="15" r="1.5" fill="black"/></svg>`);
             ASSETS.enemies.boss = createSvgImage(`<svg viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg"><path d="M25 2 C12 2 2 12 2 25 C2 38 12 48 25 48 S48 38 48 25 C48 12 38 2 25 2Z" fill="#be123c"/><path d="M15 15 L22 25 L15 35 M35 15 L28 25 L35 35" stroke="white" stroke-width="4" fill="none"/><circle cx="25" cy="25" r="5" fill="#fca5a5"/><circle cx="25" cy="25" r="2" fill="#991b1b"/></svg>`);
@@ -175,6 +175,7 @@
             // Adicionar todas as imagens dos mapas
             MAPS.forEach((map, index) => {
                 const img = ASSETS.maps[index];
+                img.crossOrigin = "Anonymous"; // Adicionado para evitar problemas de CORS
                 img.src = map.backgroundImage;
                 assetsToLoad.push(img);
             });
@@ -285,9 +286,9 @@
         };
         
         const MAPS = [
-            { name: 'Escritório Aberto', backgroundImage: 'https://storage.googleapis.com/static.progame.com/td_map_1_v2.png', path: [{x:0,y:4},{x:5,y:4},{x:5,y:11},{x:15,y:11},{x:15,y:2},{x:22,y:2}] },
-            { name: 'Sala do Servidor', backgroundImage: 'https://storage.googleapis.com/static.progame.com/td_map_2_v2.png', path: [{x:0,y:8},{x:3,y:8},{x:3,y:2},{x:9,y:2},{x:9,y:13},{x:3,y:13},{x:3,y:10},{x:17,y:10},{x:17,y:4},{x:22,y:4}] },
-            { name: 'Copa', backgroundImage: 'https://storage.googleapis.com/static.progame.com/td_map_3_v2.png', path: [{x:3,y:0},{x:3,y:5},{x:12,y:5},{x:12,y:2},{x:18,y:2},{x:18,y:8},{x:8,y:8},{x:8,y:13},{x:18,y:13},{x:18,y:16}] }
+            { name: 'Escritório Aberto', backgroundImage: 'https://i.imgur.com/p1a3Jd9.png', path: [{x:0,y:4},{x:5,y:4},{x:5,y:11},{x:15,y:11},{x:15,y:2},{x:22,y:2}] },
+            { name: 'Sala do Servidor', backgroundImage: 'https://i.imgur.com/1n0n2Y2.png', path: [{x:0,y:8},{x:3,y:8},{x:3,y:2},{x:9,y:2},{x:9,y:13},{x:3,y:13},{x:3,y:10},{x:17,y:10},{x:17,y:4},{x:22,y:4}] },
+            { name: 'Copa', backgroundImage: 'https://i.imgur.com/yvY2p0A.png', path: [{x:3,y:0},{x:3,y:5},{x:12,y:5},{x:12,y:2},{x:18,y:2},{x:18,y:8},{x:8,y:8},{x:8,y:13},{x:18,y:13},{x:18,y:16}] }
         ];
 
         const WAVES = [
