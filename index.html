@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Office Uprising</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -11,8 +11,10 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
   <style>
     body { background:#f3f4f6; font-family:'Inter',sans-serif; overflow:hidden; }
-    canvas { cursor:pointer; border-radius:0.75rem; box-shadow:0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); }
-    .ui-panel { background:#fff; border-radius:0.75rem; box-shadow:0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1); }
+    canvas { cursor:pointer; border-radius:0.75rem;
+      box-shadow:0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); }
+    .ui-panel { background:#fff; border-radius:0.75rem;
+      box-shadow:0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1); }
     .tower-card.selected, .tower-card:hover { border-color:#3b82f6; background:#eff6ff; }
     .tower-card { transition:all .2s ease-in-out; border:2px solid transparent; }
     .modal { transition:opacity .3s ease, transform .3s ease; }
@@ -60,9 +62,9 @@
     <div class="flex gap-2 mt-4">
       <button id="start-wave-btn" class="w-full bg-green-500 hover:bg-green-600 text-white text-xl font-bold py-3 rounded-lg shadow-md transition-transform transform hover:scale-105">INICIAR ONDA</button>
       <div class="flex-shrink-0 flex gap-2">
-        <button id="pause-btn" class="w-12 bg-gray-500 hover:bg-gray-600 text-white text-2xl font-bold py-3 rounded-lg shadow-md transition-transform transform hover:scale-105" disabled>⏸️</button>
-        <button id="speed-btn" class="w-12 bg-indigo-500 hover:bg-indigo-600 text-white text-xl font-bold py-3 rounded-lg shadow-md transition-transform transform hover:scale-105">1x</button>
-        <button id="mute-btn" class="w-12 bg-yellow-500 hover:bg-yellow-600 text-white text-2xl font-bold py-3 rounded-lg shadow-md transition-transform transform hover:scale-105">🔊</button>
+        <button id="pause-btn" class="w-12 bg-gray-500 hover:bg-gray-600 text-white text-2xl font-bold py-3 rounded-lg shadow-md" disabled>⏸️</button>
+        <button id="speed-btn" class="w-12 bg-indigo-500 hover:bg-indigo-600 text-white text-xl font-bold py-3 rounded-lg shadow-md">1x</button>
+        <button id="mute-btn" class="w-12 bg-yellow-500 hover:bg-yellow-600 text-white text-2xl font-bold py-3 rounded-lg shadow-md">🔊</button>
       </div>
     </div>
   </div>
@@ -81,7 +83,12 @@
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
 
-    // ===== ASSETS =====
+    // ---------- Offscreen para fundo ----------
+    const bgCanvas = document.createElement('canvas');
+    const bgCtx = bgCanvas.getContext('2d');
+    bgCanvas.width = canvas.width; bgCanvas.height = canvas.height;
+
+    // ---------- ASSETS ----------
     const ASSETS = { towers:{}, enemies:{} };
 
     const audio = {
@@ -89,14 +96,30 @@
       lastHitSoundTime:0, hitSoundInterval:0.05
     };
 
+    const TILE_SIZE=40;
+    const TOWER_RADIUS = TILE_SIZE/2 - 2;
+
+    // ---------- Helpers ----------
     function createSvgImage(svg){ const img=new Image(); img.src='data:image/svg+xml;base64,'+btoa(svg); return img; }
+    function clamp(v,min,max){ return v<min?min: v>max?max: v; }
+    function distSq(a,b){ const dx=a.x-b.x, dy=a.y-b.y; return dx*dx + dy*dy; }
+    function pointDistSq(x,y,px,py){ const dx=x-px, dy=y-py; return dx*dx + dy*dy; }
+    function pointSegmentDistance(x,y,x1,y1,x2,y2){
+      const A=x-x1, B=y-y1, C=x2-x1, D=y2-y1;
+      const dot=A*C+B*D, len=C*C+D*D;
+      let t = len ? dot/len : -1;
+      t = t<0?0: t>1?1:t;
+      const xx=x1+t*C, yy=y1+t*D;
+      const dx=x-xx, dy=y-yy;
+      return Math.hypot(dx,dy);
+    }
 
     function defineAssets(){
-      // Torres (mesmas artes)
+      // Torres (SVGs simples)
       ASSETS.towers.tack = [
         createSvgImage(`<svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><g transform="translate(20,20)"><circle r="16" fill="#d1d5db"/><path d="M0 -14 L-4 4 L4 4 Z" fill="#ef4444"/><circle cy="-15" r="5" fill="#f87171"/></g></svg>`),
-        createSvgImage(`<svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><g transform="translate(20,20)"><circle r="17" fill="#9ca3af"/><g transform="rotate(0)"><path d="M0 -15 L-4 4 L4 4 Z" fill="#ef4444"/><circle cy="-16" r="5" fill="#f87171"/></g><g transform="rotate(120)"><path d="M0 -15 L-4 4 L4 4 Z" fill="#ef4444"/><circle cy="-16" r="5" fill="#f87171"/></g><g transform="rotate(240)"><path d="M0 -15 L-4 4 L4 4 Z" fill="#ef4444"/><circle cy="-16" r="5" fill="#f87171"/></g></g></svg>`),
-        createSvgImage(`<svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><g transform="translate(20,20)"><circle r="18" fill="#4b5563"/><g transform="rotate(0)"><path d="M0 -16 L-5 5 L5 5 Z" fill="#dc2626"/><circle cy="-17" r="6" fill="#ef4444"/></g><g transform="rotate(72)"><path d="M0 -16 L-5 5 L5 5 Z" fill="#dc2626"/><circle cy="-17" r="6" fill="#ef4444"/></g><g transform="rotate(144)"><path d="M0 -16 L-5 5 L5 5 Z" fill="#dc2626"/><circle cy="-17" r="6" fill="#ef4444"/></g><g transform="rotate(216)"><path d="M0 -16 L-5 5 L5 5 Z" fill="#dc2626"/><circle cy="-17" r="6" fill="#ef4444"/></g><g transform="rotate(288)"><path d="M0 -16 L-5 5 L5 5 Z" fill="#dc2626"/><circle cy="-17" r="6" fill="#ef4444"/></g></g></svg>`)
+        createSvgImage(`<svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><g transform="translate(20,20)"><circle r="17" fill="#9ca3af"/><g><path d="M0 -15 L-4 4 L4 4 Z" fill="#ef4444"/><circle cy="-16" r="5" fill="#f87171"/></g><g transform="rotate(120)"><path d="M0 -15 L-4 4 L4 4 Z" fill="#ef4444"/><circle cy="-16" r="5" fill="#f87171"/></g><g transform="rotate(240)"><path d="M0 -15 L-4 4 L4 4 Z" fill="#ef4444"/><circle cy="-16" r="5" fill="#f87171"/></g></g></svg>`),
+        createSvgImage(`<svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><g transform="translate(20,20)"><circle r="18" fill="#4b5563"/><g><path d="M0 -16 L-5 5 L5 5 Z" fill="#dc2626"/><circle cy="-17" r="6" fill="#ef4444"/></g><g transform="rotate(72)"><path d="M0 -16 L-5 5 L5 5 Z" fill="#dc2626"/><circle cy="-17" r="6" fill="#ef4444"/></g><g transform="rotate(144)"><path d="M0 -16 L-5 5 L5 5 Z" fill="#dc2626"/><circle cy="-17" r="6" fill="#ef4444"/></g><g transform="rotate(216)"><path d="M0 -16 L-5 5 L5 5 Z" fill="#dc2626"/><circle cy="-17" r="6" fill="#ef4444"/></g><g transform="rotate(288)"><path d="M0 -16 L-5 5 L5 5 Z" fill="#dc2626"/><circle cy="-17" r="6" fill="#ef4444"/></g></g></svg>`)
       ];
       ASSETS.towers.stapler = [
         createSvgImage(`<svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><g transform="translate(20,18)"><path d="M-15 5 H15 V10 H-15 Z" fill="#6b7280"/><path d="M-15 -5 H12 L15 5 H-15 Z" fill="#9ca3af"/><rect x="-13" y="-3" width="18" height="6" fill="#d1d5db"/></g></svg>`),
@@ -119,7 +142,6 @@
         createSvgImage(`<svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><g transform="translate(20,20) rotate(45)"><rect x="-12" y="-18" width="24" height="36" rx="5" fill="#111827"/><rect x="-10" y="-16" width="20" height="14" fill="#a7f3d0"/><rect x="-10" y="-1" width="20" height="5" fill="#1f2937"/><path d="M-10 6 H10 V18 H-10 Z" fill="#374151"/><circle cy="13" r="10" fill="#b91c1c"/><circle cy="13" r="5" fill="#fca5a5"/></g></svg>`)
       ];
 
-      // Inimigos
       ASSETS.enemies.bug    = createSvgImage('<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z" fill="#22c55e"/><path d="M12 2v20" stroke="#166534" stroke-width="1"/><path d="M9.5 8a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm5 0a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" fill="#14532d"/><path d="M7 14s-2 2-4 2m14-2s2 2 4 2M7 10s-2-2-4-2m14 2s2-2 4-2" stroke="#14532d" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>');
       ASSETS.enemies.glitch = createSvgImage('<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M4 4H20V20H4z" fill="#8b5cf6"/><rect x="6" y="9" width="4" height="6" fill="#fff"/><rect x="14" y="9" width="4" height="6" fill="#fff"/><rect x="7" y="10" width="2" height="4" fill="#000"/><rect x="15" y="10" width="2" height="4" fill="#000"/></svg>');
       ASSETS.enemies.crash  = createSvgImage('<svg viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="18" r="14" fill="#f97316"/><path d="M10 12 L26 28 M10 28 L26 12" stroke="#9a3412" stroke-width="4"/><circle cx="15" cy="15" r="3" fill="#fff"/><circle cx="21" cy="15" r="3" fill="#fff"/><circle cx="15" cy="15" r="1.5" fill="#000"/><circle cx="21" cy="15" r="1.5" fill="#000"/></svg>');
@@ -127,29 +149,92 @@
     }
 
     function preloadAssets(cb){
-      const list=[];
-      for (const t in ASSETS.towers) ASSETS.towers[t].forEach(img=>list.push(img));
-      for (const e in ASSETS.enemies) list.push(ASSETS.enemies[e]);
+      const list=[]; for (const t in ASSETS.towers) ASSETS.towers[t].forEach(i=>list.push(i)); for (const e in ASSETS.enemies) list.push(ASSETS.enemies[e]);
       if (!list.length) return cb();
-      let loaded=0; list.forEach(img=>{
-        const done=()=>{ if (++loaded===list.length) cb(); }
-        if (img.complete && img.naturalHeight!==0) return done();
-        img.onload=done; img.onerror=done;
-      });
+      let n=0; const done=()=>{ if (++n===list.length) cb(); };
+      list.forEach(img=>{ if (img.complete && img.naturalHeight!==0) done(); else { img.onload=done; img.onerror=done; }});
     }
 
-    // ===== CONFIG / ESTADO =====
-    const TILE_SIZE=40;
-    let gameState={
+    // ---------- Dificuldade / specs ----------
+    const DIFFICULTY_SETTINGS={
+      facil :{ startingStaples:250, startingHealth:25, enemyHealthMultiplier:0.8,  towerCostMultiplier:0.9 },
+      normal:{ startingStaples:200, startingHealth:20, enemyHealthMultiplier:1.0,  towerCostMultiplier:1.0 },
+      dificil:{ startingStaples:150, startingHealth:15, enemyHealthMultiplier:1.25, towerCostMultiplier:1.1 },
+    };
+    const SPEED_MULTIPLIERS=[1,2,4];
+
+    const TOWER_SPECS={
+      tack:{ name:'Tachinha', baseCost:15, unlocksAtMap:0, upgrades:[
+        { cost:20, damage:8,  range:90,  fireRate:25, projectile:{speed:6, size:3, color:'#6b7280'} },
+        { cost:40, damage:15, range:100, fireRate:20, projectile:{speed:6, size:4, color:'#4b5563'} },
+        { cost:75, damage:25, range:110, fireRate:15, projectile:{speed:7, size:5, color:'#1f2937'} },
+      ]},
+      stapler:{ name:'Grampeador', baseCost:40, unlocksAtMap:0, upgrades:[
+        { cost:50,  damage:18, range:100, fireRate:50, burst:3, projectile:{speed:7, size:4, color:'#a1a1aa'} },
+        { cost:100, damage:30, range:110, fireRate:45, burst:3, projectile:{speed:7, size:4, color:'#a1a1aa'} },
+        { cost:180, damage:45, range:120, fireRate:40, burst:4, projectile:{speed:8, size:5, color:'#a1a1aa'} },
+      ]},
+      highlighter:{ name:'Marca-Texto', baseCost:60, unlocksAtMap:0, upgrades:[
+        { cost:70,  range:120, fireRate:150, slow:{factor:0.5, duration:120}, projectile:{speed:4, size:8, color:'#ecfccb'} },
+        { cost:130, range:130, fireRate:140, slow:{factor:0.4, duration:150}, projectile:{speed:4, size:9, color:'#d9f99d'} },
+        { cost:220, range:140, fireRate:130, slow:{factor:0.3, duration:180}, projectile:{speed:4, size:10, color:'#bef264'} },
+      ]},
+      rubber_band:{ name:'Elástico', baseCost:75, unlocksAtMap:2, upgrades:[
+        { cost:80,  damage:12, range:110, fireRate:90, splash:30, projectile:{speed:5, size:5, color:'#f59e0b'} },
+        { cost:150, damage:20, range:120, fireRate:85, splash:35, projectile:{speed:5, size:6, color:'#f59e0b'} },
+        { cost:250, damage:30, range:130, fireRate:80, splash:40, projectile:{speed:5, size:7, color:'#f59e0b'} },
+      ]},
+      calculator:{ name:'Calculadora', baseCost:120, unlocksAtMap:5, upgrades:[
+        { cost:150, damage:100, range:250, fireRate:200, projectile:{speed:10, size:6, color:'#ef4444'} },
+        { cost:250, damage:220, range:280, fireRate:190, projectile:{speed:10, size:7, color:'#dc2626'} },
+        { cost:400, damage:450, range:320, fireRate:180, projectile:{speed:12, size:8, color:'#b91c1c'} },
+      ]},
+    };
+
+    const ENEMY_SPECS={
+      bug:{ health:50, speed:1.5, size:12, staples:1 },
+      glitch:{ health:30, speed:2.5, size:10, staples:1 },
+      crash:{ health:250, speed:1, size:18, staples:5 },
+      boss:{ health:2000, speed:0.8, size:25, staples:25 },
+    };
+
+    // 10 mapas
+    const MAPS = [
+      { name:'Escritório Aberto',   path:[{x:0,y:4},{x:5,y:4},{x:5,y:11},{x:15,y:11},{x:15,y:2},{x:22,y:2}] },
+      { name:'Sala do Servidor',    path:[{x:0,y:8},{x:3,y:8},{x:3,y:2},{x:9,y:2},{x:9,y:13},{x:3,y:13},{x:3,y:10},{x:17,y:10},{x:17,y:4},{x:22,y:4}] },
+      { name:'Copa',                path:[{x:3,y:0},{x:3,y:5},{x:12,y:5},{x:12,y:2},{x:18,y:2},{x:18,y:8},{x:8,y:8},{x:8,y:13},{x:18,y:13},{x:18,y:16}] },
+      { name:'Corredor Longo',      path:[{x:0,y:2},{x:18,y:2},{x:18,y:13},{x:2,y:13},{x:2,y:6},{x:22,y:6}] },
+      { name:'Mesa de Reunião',     path:[{x:0,y:8},{x:22,y:8}] },
+      { name:'Depósito',            path:[{x:11,y:0},{x:11,y:5},{x:2,y:5},{x:2,y:11},{x:20,y:11},{x:20,y:2},{x:15,y:2},{x:15,y:16}] },
+      { name:'Recepção',            path:[{x:0,y:13},{x:5,y:13},{x:5,y:2},{x:17,y:2},{x:17,y:13},{x:22,y:13}] },
+      { name:'Labirinto de Baias',  path:[{x:0,y:1},{x:2,y:1},{x:2,y:14},{x:5,y:14},{x:5,y:3},{x:8,y:3},{x:8,y:14},{x:11,y:14},{x:11,y:1},{x:22,y:1}] },
+      { name:'Sala do Chefe',       path:[{x:2,y:0},{x:2,y:13},{x:20,y:13},{x:20,y:2},{x:8,y:2},{x:8,y:8},{x:22,y:8}] },
+      { name:'Terraço',             path:[{x:0,y:8},{x:5,y:8},{x:5,y:3},{x:16,y:3},{x:16,y:12},{x:5,y:12},{x:5,y:16}] }
+    ];
+
+    // Muitas ondas mas escaláveis
+    const WAVES=[];
+    for (let i=0;i<50;i++){
+      const w={enemies:[]}, complexity=Math.floor(i/5);
+      w.enemies.push({type:'bug', count:10+i*2, delay:Math.max(15,50-i)});
+      if (i>2) w.enemies.push({type:'glitch', count:5+Math.floor(i/2), delay:Math.max(40,100-i)});
+      if (i>4) w.enemies.push({type:'crash', count:3+complexity, delay:Math.max(100,150-i)});
+      if (i>9 && (i+1)%5===0) w.enemies.push({type:'boss', count:1+Math.floor((i-5)/5), delay:200});
+      WAVES.push(w);
+    }
+
+    // ---------- Estado ----------
+    let gameState = {
       staples:200, health:20, wave:0, mapIndex:0, status:'START',
       enemies:[], towers:[], projectiles:[], particles:[],
       selectedTowerToPlace:null, selectedPlacedTower:null,
       waveInProgress:false, mouse:{x:0,y:0,down:false},
-      currentWave:null, spawnTimer:0, spawnIndex:0, waveEndTimer:null, waveEndCountdown:10,
+      currentWave:null, spawnTimer:0, spawnIndex:0,
+      waveEndTimer:null, waveEndCountdown:10,
       difficulty:null, gameSpeed:1, speedIndex:0
     };
 
-    // ===== UI refs =====
+    // ---------- UI refs ----------
     const staplesEl=document.getElementById('staples-amount');
     const healthEl=document.getElementById('health-amount');
     const waveEl=document.getElementById('wave-number');
@@ -166,83 +251,35 @@
     const speedBtn=document.getElementById('speed-btn');
     const muteBtn=document.getElementById('mute-btn');
 
-    // ===== Dificuldade / Torres / Inimigos / Mapas / Ondas =====
-    const DIFFICULTY_SETTINGS={
-      facil:{ startingStaples:250, startingHealth:25, enemyHealthMultiplier:0.8,  towerCostMultiplier:0.9 },
-      normal:{startingStaples:200, startingHealth:20, enemyHealthMultiplier:1.0,  towerCostMultiplier:1.0 },
-      dificil:{startingStaples:150, startingHealth:15, enemyHealthMultiplier:1.25, towerCostMultiplier:1.1 },
-    };
-    const SPEED_MULTIPLIERS=[1,2,4];
-
-    const TOWER_SPECS={
-      tack:{ name:'Tachinha', icon:'📍', baseCost:15, unlocksAtMap:0, upgrades:[
-        { cost:20, damage:8,  range:90,  fireRate:25, projectile:{speed:6, size:3, color:'#6b7280'} },
-        { cost:40, damage:15, range:100, fireRate:20, projectile:{speed:6, size:4, color:'#4b5563'} },
-        { cost:75, damage:25, range:110, fireRate:15, projectile:{speed:7, size:5, color:'#1f2937'} },
-      ]},
-      stapler:{ name:'Grampeador', icon:'📎', baseCost:40, unlocksAtMap:0, upgrades:[
-        { cost:50,  damage:18, range:100, fireRate:50, burst:3, projectile:{speed:7, size:4, color:'#a1a1aa'} },
-        { cost:100, damage:30, range:110, fireRate:45, burst:3, projectile:{speed:7, size:4, color:'#a1a1aa'} },
-        { cost:180, damage:45, range:120, fireRate:40, burst:4, projectile:{speed:8, size:5, color:'#a1a1aa'} },
-      ]},
-      highlighter:{ name:'Marca-Texto', icon:'🖍️', baseCost:60, unlocksAtMap:0, upgrades:[
-        { cost:70,  range:120, fireRate:150, slow:{factor:0.5, duration:120}, projectile:{speed:4, size:8, color:'#ecfccb'} },
-        { cost:130, range:130, fireRate:140, slow:{factor:0.4, duration:150}, projectile:{speed:4, size:9, color:'#d9f99d'} },
-        { cost:220, range:140, fireRate:130, slow:{factor:0.3, duration:180}, projectile:{speed:4, size:10, color:'#bef264'} },
-      ]},
-      rubber_band:{ name:'Elástico', icon:'ゴム', baseCost:75, unlocksAtMap:2, upgrades:[
-        { cost:80,  damage:12, range:110, fireRate:90, splash:30, projectile:{speed:5, size:5, color:'#f59e0b'} },
-        { cost:150, damage:20, range:120, fireRate:85, splash:35, projectile:{speed:5, size:6, color:'#f59e0b'} },
-        { cost:250, damage:30, range:130, fireRate:80, splash:40, projectile:{speed:5, size:7, color:'#f59e0b'} },
-      ]},
-      calculator:{ name:'Calculadora', icon:'🧮', baseCost:120, unlocksAtMap:5, upgrades:[
-        { cost:150, damage:100, range:250, fireRate:200, projectile:{speed:10, size:6, color:'#ef4444'} },
-        { cost:250, damage:220, range:280, fireRate:190, projectile:{speed:10, size:7, color:'#dc2626'} },
-        { cost:400, damage:450, range:320, fireRate:180, projectile:{speed:12, size:8, color:'#b91c1c'} },
-      ]},
-    };
-
-    const ENEMY_SPECS={
-      bug:{ health:50, speed:1.5, size:12, staples:1 },
-      glitch:{ health:30, speed:2.5, size:10, staples:1 },
-      crash:{ health:250, speed:1, size:18, staples:5 },
-      boss:{ health:2000, speed:0.8, size:25, staples:25 },
-    };
-
-    const MAPS=[
-      { name:'Escritório Aberto',   path:[{x:0,y:4},{x:5,y:4},{x:5,y:11},{x:15,y:11},{x:15,y:2},{x:22,y:2}] },
-      { name:'Sala do Servidor',    path:[{x:0,y:8},{x:3,y:8},{x:3,y:2},{x:9,y:2},{x:9,y:13},{x:3,y:13},{x:3,y:10},{x:17,y:10},{x:17,y:4},{x:22,y:4}] },
-      { name:'Copa',                path:[{x:3,y:0},{x:3,y:5},{x:12,y:5},{x:12,y:2},{x:18,y:2},{x:18,y:8},{x:8,y:8},{x:8,y:13},{x:18,y:13},{x:18,y:16}] },
-      { name:'Corredor Longo',      path:[{x:0,y:2},{x:18,y:2},{x:18,y:13},{x:2,y:13},{x:2,y:6},{x:22,y:6}] },
-      { name:'Mesa de Reunião',     path:[{x:0,y:8},{x:22,y:8}] },
-      { name:'Depósito',            path:[{x:11,y:0},{x:11,y:5},{x:2,y:5},{x:2,y:11},{x:20,y:11},{x:20,y:2},{x:15,y:2},{x:15,y:16}] },
-      { name:'Recepção',            path:[{x:0,y:13},{x:5,y:13},{x:5,y:2},{x:17,y:2},{x:17,y:13},{x:22,y:13}] },
-      { name:'Labirinto de Baias',  path:[{x:0,y:1},{x:2,y:1},{x:2,y:14},{x:5,y:14},{x:5,y:3},{x:8,y:3},{x:8,y:14},{x:11,y:14},{x:11,y:1},{x:22,y:1}] },
-      { name:'Sala do Chefe',       path:[{x:2,y:0},{x:2,y:13},{x:20,y:13},{x:20,y:2},{x:8,y:2},{x:8,y:8},{x:22,y:8}] },
-      { name:'Terraço',             path:[{x:0,y:8},{x:5,y:8},{x:5,y:3},{x:16,y:3},{x:16,y:12},{x:5,y:12},{x:5,y:16}] }
-    ];
-
-    const WAVES=[];
-    for (let i=0;i<50;i++){
-      const wave={ enemies:[] };
-      const complexity=Math.floor(i/5);
-      const bugCount = 10 + i*2;
-      wave.enemies.push({type:'bug', count:bugCount, delay:Math.max(15, 50-i)});
-      if (i>2){ const g=5+Math.floor(i/2); wave.enemies.push({type:'glitch', count:g, delay:Math.max(40,100-i)}); }
-      if (i>4){ const c=3+complexity; wave.enemies.push({type:'crash', count:c, delay:Math.max(100,150-i)}); }
-      if (i>9 && (i+1)%5===0){ const b=1+Math.floor((i-5)/5); wave.enemies.push({type:'boss', count:b, delay:200}); }
-      WAVES.push(wave);
+    // ---------- GRID ESPACIAL (para alvo e splash) ----------
+    const CELL_SIZE = 80;
+    const GRID_COLS = Math.ceil(canvas.width / CELL_SIZE);
+    const GRID_ROWS = Math.ceil(canvas.height / CELL_SIZE);
+    const gridCells = Array.from({length: GRID_COLS * GRID_ROWS}, () => []);
+    function resetGrid(){ for (let i=0;i<gridCells.length;i++) gridCells[i].length=0; }
+    function cellIndexFor(x,y){
+      const cx = clamp(Math.floor(x / CELL_SIZE), 0, GRID_COLS-1);
+      const cy = clamp(Math.floor(y / CELL_SIZE), 0, GRID_ROWS-1);
+      return cy*GRID_COLS + cx;
+    }
+    function addEnemyToGrid(e){ gridCells[cellIndexFor(e.x, e.y)].push(e); }
+    function forEachEnemyNearCircle(x, y, r, cb){
+      const minC = clamp(Math.floor((x - r)/CELL_SIZE), 0, GRID_COLS-1);
+      const maxC = clamp(Math.floor((x + r)/CELL_SIZE), 0, GRID_COLS-1);
+      const minR = clamp(Math.floor((y - r)/CELL_SIZE), 0, GRID_ROWS-1);
+      const maxR = clamp(Math.floor((y + r)/CELL_SIZE), 0, GRID_ROWS-1);
+      for (let cy=minR; cy<=maxR; cy++){
+        for (let cx=minC; cx<=maxC; cx++){
+          const arr = gridCells[cy*GRID_COLS + cx];
+          for (let i=0;i<arr.length;i++) cb(arr[i]);
+        }
+      }
     }
 
-    // ===== Util =====
-    function distSq(a,b){ const dx=a.x-b.x, dy=a.y-b.y; return dx*dx + dy*dy; }
-    function getDistance(a,b){ return Math.hypot(a.x-b.x, a.y-b.y); } // ainda usamos no clique
-
-    // ===== Classes =====
+    // ---------- Classes ----------
     class Enemy {
       constructor(type){
         const start = MAPS[gameState.mapIndex].path[0];
-        // Início no centro do tile para estabilidade
         this.x = start.x*TILE_SIZE + TILE_SIZE/2;
         this.y = start.y*TILE_SIZE + TILE_SIZE/2;
         this.pathIndex = 0;
@@ -275,11 +312,10 @@
         return true;
       }
       draw(){
-        const img = ASSETS.enemies[this.type];
+        const img=ASSETS.enemies[this.type];
         if (this.type==='glitch'){ this.glitchTimer=(this.glitchTimer+1)%20; if (this.glitchTimer<10) return; }
         if (img && img.complete){
-          const s=this.size*2.2;
-          ctx.drawImage(img, this.x - s/2, this.y - s/2, s, s);
+          const s=this.size*2.2; ctx.drawImage(img, this.x-s/2, this.y-s/2, s, s);
         }
         const pct=this.health/this.maxHealth;
         ctx.fillStyle='#dc2626'; ctx.fillRect(this.x-this.size, this.y-this.size-8, this.size*2, 4);
@@ -316,15 +352,14 @@
         }
       }
       findTarget(){
-        if (this.target && this.target.health>0){
-          const r2=this.getStats().range**2;
-          if (distSq(this, this.target) <= r2) return;
-        }
-        this.target=null; let best=Infinity, r2=this.getStats().range**2;
-        for (let i=0;i<gameState.enemies.length;i++){
-          const e=gameState.enemies[i], d2=distSq(this,e);
-          if (d2<=r2 && d2<best){ best=d2; this.target=e; }
-        }
+        // usa grid: só checa inimigos próximos
+        const range=this.getStats().range, r2=range*range;
+        let best=Infinity, bestE=null;
+        forEachEnemyNearCircle(this.x, this.y, range, (e)=>{
+          const d2 = (e.x-this.x)*(e.x-this.x) + (e.y-this.y)*(e.y-this.y);
+          if (d2<=r2 && d2<best){ best=d2; bestE=e; }
+        });
+        this.target = bestE;
       }
       shoot(){
         if (!this.target) return;
@@ -340,7 +375,7 @@
         }
       }
       drawRange(){
-        ctx.fillStyle='rgba(59,130,246,0.1)'; ctx.strokeStyle='rgba(59,130,246,0.5)'; ctx.lineWidth=2;
+        ctx.fillStyle='rgba(59,130,246,0.10)'; ctx.strokeStyle='rgba(59,130,246,0.50)'; ctx.lineWidth=2;
         ctx.beginPath(); ctx.arc(this.x,this.y,this.getStats().range,0,Math.PI*2); ctx.fill(); ctx.stroke();
       }
     }
@@ -349,10 +384,8 @@
       constructor(x,y,target,tower){ this.x=x; this.y=y; this.target=target; this.tower=tower; this.stats=tower.getStats(); this.rotation=tower.rotation; }
       update(){
         if (!this.target || this.target.health<=0) return false;
-
-        const dx=this.target.x - this.x, dy=this.target.y - this.y;
+        const dx=this.target.x-this.x, dy=this.target.y-this.y;
         const dist=Math.hypot(dx,dy);
-
         if (dist < this.stats.projectile.speed){ this.hitTarget(); return false; }
         this.x += (dx/dist)*this.stats.projectile.speed;
         this.y += (dy/dist)*this.stats.projectile.speed;
@@ -361,13 +394,11 @@
       }
       hitTarget(){
         if (this.stats.splash){
-          const r2 = this.stats.splash**2;
-          const tx = this.target.x, ty=this.target.y;
-          const enemies = gameState.enemies;
-          for (let i=0;i<enemies.length;i++){
-            const e=enemies[i]; const dx=e.x-tx, dy=e.y-ty;
-            if (dx*dx + dy*dy <= r2) e.takeDamage(this.stats.damage);
-          }
+          const r=this.stats.splash, r2=r*r, tx=this.target.x, ty=this.target.y;
+          forEachEnemyNearCircle(tx,ty,r,(e)=>{
+            const dx=e.x-tx, dy=e.y-ty;
+            if (dx*dx+dy*dy<=r2) e.takeDamage(this.stats.damage);
+          });
         } else if (this.stats.slow){
           this.target.takeDamage(0);
           this.target.speed = this.target.baseSpeed * this.stats.slow.factor;
@@ -383,22 +414,59 @@
       }
     }
 
-    // ===== Loop principal =====
+    // ---------- Colocação: impedir em cima do caminho ----------
+    function isNearPath(x,y, extra=0){
+      const half = TILE_SIZE/2;
+      const thr = half + extra; // distância máxima ao centro da via
+      const path = MAPS[gameState.mapIndex].path;
+      for (let i=0;i<path.length-1;i++){
+        const a=path[i], b=path[i+1];
+        const ax=a.x*TILE_SIZE + TILE_SIZE/2, ay=a.y*TILE_SIZE + TILE_SIZE/2;
+        const bx=b.x*TILE_SIZE + TILE_SIZE/2, by=b.y*TILE_SIZE + TILE_SIZE/2;
+        if (pointSegmentDistance(x,y,ax,ay,bx,by) <= thr) return true;
+      }
+      // protege a “porta” final
+      const end = path[path.length-1];
+      const rx = end.x*TILE_SIZE - TILE_SIZE, ry = end.y*TILE_SIZE;
+      const rw = TILE_SIZE, rh = TILE_SIZE*2;
+      if (x>=rx-8 && x<=rx+rw+8 && y>=ry-8 && y<=ry+rh+8) return true;
+      return false;
+    }
+
+    function isCollidingTower(x,y){
+      for (let i=0;i<gameState.towers.length;i++){
+        const t=gameState.towers[i];
+        if (Math.hypot(t.x-x, t.y-y) < TILE_SIZE-4) return true;
+      }
+      return false;
+    }
+
+    function withinBounds(x,y){
+      const m=TOWER_RADIUS+2;
+      return x>=m && x<=canvas.width-m && y>=m && y<=canvas.height-m;
+    }
+
+    function canPlaceTower(x,y){
+      if (!withinBounds(x,y)) return false;
+      // margem extra para evitar “pegar” na borda da via
+      if (isNearPath(x,y, TOWER_RADIUS-2)) return false;
+      if (isCollidingTower(x,y)) return false;
+      return true;
+    }
+
+    // ---------- Loop ----------
     function init(){
       showModal('Carregando...', 'Preparando o material de escritório...', '', ()=>{});
       defineAssets();
       preloadAssets(()=>{
         setupEventListeners();
         showDifficultySelection();
+        renderBackground(); // cria o fundo do mapa atual
         gameLoop();
       });
     }
 
-    function gameLoop(){ 
-      // aplica multiplicador de velocidade executando N updates
-      for (let i=0;i<gameState.gameSpeed;i++) update();
-      draw(); requestAnimationFrame(gameLoop);
-    }
+    function gameLoop(){ for (let i=0;i<gameState.gameSpeed;i++) update(); draw(); requestAnimationFrame(gameLoop); }
 
     function update(){
       if (gameState.status!=='PLAYING') return;
@@ -411,35 +479,38 @@
           if (part && part.spawned < part.count){
             gameState.enemies.push(new Enemy(part.type));
             part.spawned++; gameState.spawnTimer = part.delay;
-          } else if (part && part.spawned >= part.count) {
-            gameState.spawnIndex++;
-          }
+          } else if (part && part.spawned >= part.count) gameState.spawnIndex++;
         }
       }
 
-      // Inimigos: atualiza e filtra em UMA passada
+      // Inimigos + GRID em uma passada
+      resetGrid();
       const survivorsE=[];
       for (let i=0;i<gameState.enemies.length;i++){
         const e=gameState.enemies[i];
         const alive = e.update();
         if (!alive) continue;
-        if (e.health>0 && e.pathIndex < MAPS[gameState.mapIndex].path.length-1) survivorsE.push(e);
+        if (e.health>0 && e.pathIndex < MAPS[gameState.mapIndex].path.length-1){
+          survivorsE.push(e);
+          addEnemyToGrid(e);
+        }
       }
       gameState.enemies = survivorsE;
 
       // Torres
       for (let i=0;i<gameState.towers.length;i++) gameState.towers[i].update();
 
-      // Projéteis: **corrigido** (somente uma chamada a update por frame)
+      // Projéteis (uma passada)
       const survivorsP=[];
       for (let i=0;i<gameState.projectiles.length;i++){
-        const p = gameState.projectiles[i];
+        const p=gameState.projectiles[i];
         if (p.update()) survivorsP.push(p);
       }
       gameState.projectiles = survivorsP;
 
       updateUI();
 
+      // Fim da onda
       if (gameState.waveInProgress && gameState.enemies.length===0 && gameState.spawnIndex >= gameState.currentWave.enemies.length){
         endWave();
       }
@@ -450,21 +521,25 @@
     }
 
     function draw(){
-      ctx.clearRect(0,0,canvas.width,canvas.height);
-      ctx.fillStyle='#e5e7eb'; ctx.fillRect(0,0,canvas.width,canvas.height);
+      // fundo pré-renderizado
+      ctx.drawImage(bgCanvas, 0, 0);
+
       drawMapPath();
 
+      // prévia de posicionamento
       if (gameState.selectedTowerToPlace) drawPlacementPreview();
 
-      // Torres / seleção
+      // torres
       for (let i=0;i<gameState.towers.length;i++) gameState.towers[i].draw();
+
+      // seleção
       if (gameState.selectedPlacedTower){
         gameState.selectedPlacedTower.drawRange();
         ctx.strokeStyle='#3b82f6'; ctx.lineWidth=3;
-        ctx.beginPath(); ctx.arc(gameState.selectedPlacedTower.x, gameState.selectedPlacedTower.y, TILE_SIZE/2 - 2, 0, Math.PI*2); ctx.stroke();
+        ctx.beginPath(); ctx.arc(gameState.selectedPlacedTower.x, gameState.selectedPlacedTower.y, TOWER_RADIUS, 0, Math.PI*2); ctx.stroke();
       }
 
-      // Inimigos / projéteis
+      // inimigos / projéteis
       for (let i=0;i<gameState.enemies.length;i++) gameState.enemies[i].draw();
       for (let i=0;i<gameState.projectiles.length;i++) gameState.projectiles[i].draw();
 
@@ -473,38 +548,45 @@
 
     function drawPauseOverlay(){
       ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillRect(0,0,canvas.width,canvas.height);
-      ctx.fillStyle='#fff'; ctx.font='bold 48px Inter, sans-serif';
-      ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('JOGO PAUSADO', canvas.width/2, canvas.height/2);
+      ctx.fillStyle='#fff'; ctx.font='bold 48px Inter, sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText('JOGO PAUSADO', canvas.width/2, canvas.height/2);
     }
 
     function drawMapPath(){
       const path = MAPS[gameState.mapIndex].path;
       ctx.strokeStyle='rgba(0,0,0,0.05)'; ctx.lineWidth=TILE_SIZE; ctx.lineCap='round'; ctx.lineJoin='round';
       ctx.beginPath();
-      // corrigido: começa no centro do primeiro tile
       ctx.moveTo(path[0].x*TILE_SIZE + TILE_SIZE/2, path[0].y*TILE_SIZE + TILE_SIZE/2);
       for (let i=1;i<path.length;i++){
         ctx.lineTo(path[i].x*TILE_SIZE + TILE_SIZE/2, path[i].y*TILE_SIZE + TILE_SIZE/2);
       }
       ctx.stroke();
 
-      // “máquina de café”
-      const endPoint = path[path.length-1];
+      // “porta” / máquina de café
+      const end = path[path.length-1];
       ctx.fillStyle='#78350f';
-      ctx.fillRect(endPoint.x*TILE_SIZE - TILE_SIZE, endPoint.y*TILE_SIZE, TILE_SIZE, TILE_SIZE*2);
+      ctx.fillRect(end.x*TILE_SIZE - TILE_SIZE, end.y*TILE_SIZE, TILE_SIZE, TILE_SIZE*2);
       ctx.fillStyle='#1e293b';
-      ctx.fillRect(endPoint.x*TILE_SIZE - TILE_SIZE + 5, endPoint.y*TILE_SIZE + 5, TILE_SIZE - 10, 10);
+      ctx.fillRect(end.x*TILE_SIZE - TILE_SIZE + 5, end.y*TILE_SIZE + 5, TILE_SIZE - 10, 10);
       ctx.fillStyle='#f3f4f6';
-      ctx.beginPath(); ctx.arc(endPoint.x*TILE_SIZE - TILE_SIZE/2, endPoint.y*TILE_SIZE + 25, 5, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(end.x*TILE_SIZE - TILE_SIZE/2, end.y*TILE_SIZE + 25, 5, 0, Math.PI*2); ctx.fill();
     }
 
     function drawPlacementPreview(){
       const gx = Math.floor(gameState.mouse.x/TILE_SIZE)*TILE_SIZE + TILE_SIZE/2;
       const gy = Math.floor(gameState.mouse.y/TILE_SIZE)*TILE_SIZE + TILE_SIZE/2;
-      const spec=TOWER_SPECS[gameState.selectedTowerToPlace];
-      ctx.fillStyle='rgba(59,130,246,0.2)'; ctx.beginPath(); ctx.arc(gx,gy,spec.upgrades[0].range,0,Math.PI*2); ctx.fill();
+      const can = canPlaceTower(gx, gy);
+      ctx.fillStyle = can ? 'rgba(34,197,94,0.18)' : 'rgba(239,68,68,0.18)';
+      ctx.strokeStyle = can ? 'rgba(34,197,94,0.60)' : 'rgba(239,68,68,0.60)';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(gx, gy, TOWER_RADIUS+2, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+      // alcance da torre selecionada
+      const spec = TOWER_SPECS[gameState.selectedTowerToPlace];
+      ctx.beginPath(); ctx.arc(gx, gy, spec.upgrades[0].range, 0, Math.PI*2);
+      ctx.strokeStyle='rgba(59,130,246,0.25)'; ctx.stroke();
     }
 
+    // ---------- Fluxo das ondas ----------
     function startWave(){
       if (gameState.waveEndTimer){ clearInterval(gameState.waveEndTimer); gameState.waveEndTimer=null; }
       if (gameState.status!=='PLAYING' || gameState.waveInProgress) return;
@@ -522,14 +604,11 @@
       gameState.staples += 100 + gameState.wave*10;
 
       if (gameState.wave >= WAVES.length){
-        changeStatus('VICTORY');
-        showModal('Vitória!', 'Você defendeu a máquina de café!', 'Jogar Novamente', showDifficultySelection);
+        changeStatus('VICTORY'); showModal('Vitória!','Você defendeu a máquina de café!','Jogar Novamente', showDifficultySelection);
       } else if (gameState.wave % 5 === 0 && gameState.mapIndex < MAPS.length-1){
         // reembolsa 100% do investido ao trocar de mapa
-        let refund=0;
-        gameState.towers.forEach(t=>{ refund += getTowerValue(t); });
-        gameState.staples += refund;
-        gameState.towers=[]; deselectAll();
+        let refund=0; gameState.towers.forEach(t=>{ refund += getTowerValue(t); });
+        gameState.staples += refund; gameState.towers=[]; deselectAll();
 
         const oldIdx=gameState.mapIndex; gameState.mapIndex++;
         const newTowers = getNewUnlocks(oldIdx, gameState.mapIndex);
@@ -537,7 +616,7 @@
         let text = `Você avançou para a ${MAPS[gameState.mapIndex].name}!\nTodas as suas defesas foram vendidas pelo valor total.`;
         if (newTowers.length) text += `\n\nNovas defesas desbloqueadas:\n${newTowers.map(t=>TOWER_SPECS[t].name).join('\n')}`;
 
-        populateTowerShop();
+        populateTowerShop(); renderBackground();
         changeStatus('LEVEL_TRANSITION');
         showModal('Novo Nível!', text, 'Continuar', ()=>{ changeStatus('PLAYING'); startWaveEndTimer(); });
       } else startWaveEndTimer();
@@ -554,40 +633,38 @@
       if (gameState.waveEndCountdown<=0) startWave();
     }
 
-    function startGame(difficulty){
-      gameState.difficulty = DIFFICULTY_SETTINGS[difficulty];
+    function startGame(diff){
+      gameState.difficulty = DIFFICULTY_SETTINGS[diff];
       resetGame();
       if (!audio.ready) initAudio();
     }
 
     function resetGame(){
       if (gameState.waveEndTimer){ clearInterval(gameState.waveEndTimer); gameState.waveEndTimer=null; }
-      gameState.staples = gameState.difficulty.startingStaples;
-      gameState.health  = gameState.difficulty.startingHealth;
+      gameState.staples=gameState.difficulty.startingStaples;
+      gameState.health=gameState.difficulty.startingHealth;
       gameState.wave=0; gameState.mapIndex=0;
       gameState.enemies=[]; gameState.towers=[]; gameState.projectiles=[];
       gameState.waveInProgress=false; deselectAll();
       startWaveBtn.disabled=false; startWaveBtn.textContent='INICIAR ONDA'; pauseBtn.disabled=true;
-      populateTowerShop(); changeStatus('PLAYING');
+      populateTowerShop(); renderBackground(); changeStatus('PLAYING');
     }
 
-    // ===== Áudio =====
+    // ---------- Áudio ----------
     function initAudio(){
       if (audio.ready) return;
       Tone.start();
-      audio.synths.shoot  = new Tone.Synth({ volume:-15, oscillator:{type:'square'}, envelope:{attack:0.01,decay:0.1,sustain:0.1,release:0.1} }).toDestination();
-      audio.synths.place  = new Tone.Synth({ volume:-10, oscillator:{type:'sine'},   envelope:{attack:0.01,decay:0.2,sustain:0,release:0.2} }).toDestination();
+      audio.synths.shoot  = new Tone.Synth({ volume:-15, oscillator:{type:'square'},   envelope:{attack:0.01, decay:0.1, sustain:0.1, release:0.1} }).toDestination();
+      audio.synths.place  = new Tone.Synth({ volume:-10, oscillator:{type:'sine'},     envelope:{attack:0.01, decay:0.2, sustain:0,   release:0.2} }).toDestination();
       audio.synths.upgrade= new Tone.PluckSynth({ volume:-5 }).toDestination();
-      audio.synths.error  = new Tone.Synth({ volume:-10, oscillator:{type:'triangle'}, envelope:{attack:0.01,decay:0.3,sustain:0,release:0.1} }).toDestination();
-      audio.synths.hit    = new Tone.MembraneSynth({ volume:-20, pitchDecay:0.01, octaves:2, envelope:{attack:0.001,decay:0.1,sustain:0} }).toDestination();
+      audio.synths.error  = new Tone.Synth({ volume:-10, oscillator:{type:'triangle'}, envelope:{attack:0.01, decay:0.3, sustain:0,   release:0.1} }).toDestination();
+      audio.synths.hit    = new Tone.MembraneSynth({ volume:-20, pitchDecay:0.01, octaves:2, envelope:{attack:0.001, decay:0.1, sustain:0} }).toDestination();
       audio.music = new Tone.Loop(time=>{
         audio.synths.place.triggerAttackRelease("C2","8n",time);
         audio.synths.place.triggerAttackRelease("G2","8n",time+Tone.Time("8n"));
       },"1n").start(0);
-      Tone.Transport.start();
-      audio.ready=true;
+      Tone.Transport.start(); audio.ready=true;
     }
-
     function playSound(synthName,note,duration='16n'){
       if (!audio.ready || audio.muted) return;
       if (synthName==='hit'){
@@ -598,39 +675,36 @@
       if (audio.synths[synthName]) audio.synths[synthName].triggerAttackRelease(note,duration);
     }
 
-    // ===== UI / Util =====
+    // ---------- UI / util ----------
     function getTowerCost(type, level=0){
       const spec=TOWER_SPECS[type];
       if (level===0) return Math.floor(spec.baseCost * gameState.difficulty.towerCostMultiplier);
       return Math.floor(spec.upgrades[level-1].cost * gameState.difficulty.towerCostMultiplier);
     }
     function getTowerValue(tower){
-      let total = getTowerCost(tower.type,0);
-      for (let i=0;i<tower.level;i++) total += getTowerCost(tower.type,i+1);
+      let total=getTowerCost(tower.type,0);
+      for (let i=0;i<tower.level;i++) total+=getTowerCost(tower.type,i+1);
       return total;
     }
-
     function updateUI(){
       staplesEl.textContent=gameState.staples;
       healthEl.textContent=gameState.health;
       waveEl.textContent=gameState.wave;
 
       if (gameState.selectedPlacedTower){
-        const t=gameState.selectedPlacedTower; const stats=t.getStats(); const next=t.spec.upgrades[t.level+1];
+        const t=gameState.selectedPlacedTower, stats=t.getStats(), next=t.spec.upgrades[t.level+1];
         upgradePanelEl.classList.remove('hidden');
         upgradeTowerNameEl.textContent=t.spec.name;
         upgradeTowerLevelEl.textContent=t.level+1;
         upgradeTowerDamageEl.textContent=stats.damage || 'N/A';
         upgradeTowerRangeEl.textContent=stats.range;
 
-        if (next){
-          const upc=getTowerCost(t.type, t.level+1);
+        if (next){ const upc=getTowerCost(t.type, t.level+1);
           upgradeBtn.disabled = gameState.staples < upc;
           upgradeBtn.textContent = `Upgrade (📎 ${upc})`;
         } else { upgradeBtn.textContent='Nível Máximo'; upgradeBtn.disabled=true; }
-
-        const sellValue=Math.floor(getTowerValue(t) * 0.75);
-        sellBtn.textContent = `Vender (📎 ${sellValue})`;
+        const sellValue = Math.floor(getTowerValue(t)*0.75);
+        sellBtn.textContent=`Vender (📎 ${sellValue})`;
       } else upgradePanelEl.classList.add('hidden');
     }
 
@@ -642,7 +716,7 @@
           const card=document.createElement('div');
           card.className='tower-card bg-gray-50 p-2 rounded-lg cursor-pointer flex items-center gap-4';
           card.dataset.towerType=key;
-          const cost = gameState.difficulty ? getTowerCost(key) : spec.baseCost;
+          const cost=gameState.difficulty?getTowerCost(key):spec.baseCost;
           card.innerHTML=`
             <div class="tower-card-img" style="background-image:url('${ASSETS.towers[key][0].src}')"></div>
             <div><h3 class="font-semibold text-gray-800">${spec.name}</h3>
@@ -651,10 +725,8 @@
         }
       }
     }
-
     function getNewUnlocks(oldIdx,newIdx){
-      const arr=[]; for (const k in TOWER_SPECS){ const s=TOWER_SPECS[k]; if (s.unlocksAtMap>oldIdx && s.unlocksAtMap<=newIdx) arr.push(k); }
-      return arr;
+      const arr=[]; for (const k in TOWER_SPECS){ const s=TOWER_SPECS[k]; if (s.unlocksAtMap>oldIdx && s.unlocksAtMap<=newIdx) arr.push(k); } return arr;
     }
 
     function showModal(title,text,btnText,callback){
@@ -669,52 +741,44 @@
       }
       document.getElementById('modal').classList.remove('modal-hidden');
     }
-
     function showDifficultySelection(){
-      const modalTitle=document.getElementById('modal-title');
-      const modalContent=document.getElementById('modal-content');
-      const modalButtons=document.getElementById('modal-buttons');
-
-      modalTitle.textContent='Office Uprising';
-      modalContent.textContent='Selecione o nível de dificuldade para começar.';
-      modalButtons.innerHTML=`
+      const t=document.getElementById('modal-title');
+      const c=document.getElementById('modal-content');
+      const b=document.getElementById('modal-buttons');
+      t.textContent='Office Uprising';
+      c.textContent='Selecione o nível de dificuldade para começar.';
+      b.innerHTML=`
         <button id="easy-btn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-8 rounded-lg text-xl mx-2">Fácil</button>
         <button id="normal-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-8 rounded-lg text-xl mx-2">Normal</button>
-        <button id="hard-btn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-8 rounded-lg text-xl mx-2">Difícil</button>
-      `;
+        <button id="hard-btn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-8 rounded-lg text-xl mx-2">Difícil</button>`;
       document.getElementById('easy-btn').onclick = ()=>startGame('facil');
       document.getElementById('normal-btn').onclick = ()=>startGame('normal');
       document.getElementById('hard-btn').onclick   = ()=>startGame('dificil');
       document.getElementById('modal').classList.remove('modal-hidden');
     }
-
     function changeStatus(s){
       gameState.status=s;
       if (!['LEVEL_TRANSITION','GAMEOVER','VICTORY','START'].includes(s)){
         document.getElementById('modal').classList.add('modal-hidden');
       }
     }
-
     function deselectAll(){
-      gameState.selectedTowerToPlace=null;
-      gameState.selectedPlacedTower=null;
+      gameState.selectedTowerToPlace=null; gameState.selectedPlacedTower=null;
       document.querySelectorAll('.tower-card.selected').forEach(c=>c.classList.remove('selected'));
       updateUI();
     }
 
     function setupEventListeners(){
-      // Loja
       towerSelectionEl.addEventListener('click', e=>{
         const card=e.target.closest('.tower-card'); if (!card) return;
-        const type=card.dataset.towerType;
-        const cost=getTowerCost(type);
+        const type=card.dataset.towerType; const cost=getTowerCost(type);
         if (gameState.staples >= cost){ deselectAll(); gameState.selectedTowerToPlace=type; card.classList.add('selected'); }
       });
 
-      // Canvas
       canvas.addEventListener('mousemove', e=>{
-        const r=canvas.getBoundingClientRect(); gameState.mouse.x=e.clientX - r.left; gameState.mouse.y=e.clientY - r.top;
+        const r=canvas.getBoundingClientRect(); gameState.mouse.x=e.clientX-r.left; gameState.mouse.y=e.clientY-r.top;
       });
+
       canvas.addEventListener('click', ()=>{
         if (gameState.status!=='PLAYING') return;
         const gx=Math.floor(gameState.mouse.x/TILE_SIZE)*TILE_SIZE + TILE_SIZE/2;
@@ -722,55 +786,217 @@
 
         if (gameState.selectedTowerToPlace){
           const cost=getTowerCost(gameState.selectedTowerToPlace);
-          if (gameState.staples >= cost){
+          if (gameState.staples >= cost && canPlaceTower(gx,gy)){
             gameState.towers.push(new Tower(gx,gy,gameState.selectedTowerToPlace));
             gameState.staples -= cost; playSound('place','C5'); deselectAll();
+          } else if (!canPlaceTower(gx,gy)){
+            playSound('error','C3','16n');
           }
         } else {
+          // seleção de torre já colocada
           let clicked=null;
-          for (const t of gameState.towers){ if (getDistance({x:gx,y:gy}, t) < TILE_SIZE/2){ clicked=t; break; } }
+          for (const t of gameState.towers){ if (Math.hypot(t.x-gx, t.y-gy) < TOWER_RADIUS){ clicked=t; break; } }
           gameState.selectedPlacedTower=clicked; updateUI();
         }
       });
 
-      // Upgrade / Venda
       upgradeBtn.addEventListener('click', ()=>{
         const t=gameState.selectedPlacedTower; if (!t) return;
         const next=t.spec.upgrades[t.level+1]; if (!next) return;
         const cost=getTowerCost(t.type, t.level+1);
         if (gameState.staples >= cost){ gameState.staples -= cost; t.level++; playSound('upgrade','E6'); updateUI(); }
       });
+
       sellBtn.addEventListener('click', ()=>{
         const t=gameState.selectedPlacedTower; if (!t) return;
         const sellValue=Math.floor(getTowerValue(t)*0.75);
-        gameState.staples += sellValue; gameState.towers = gameState.towers.filter(x=>x!==t);
+        gameState.staples += sellValue;
+        gameState.towers = gameState.towers.filter(x=>x!==t);
         playSound('place','A4'); deselectAll();
       });
 
-      // Onda / Pausa
       startWaveBtn.addEventListener('click', startWave);
+
       pauseBtn.addEventListener('click', ()=>{
         if (gameState.status==='PLAYING'){ changeStatus('PAUSED'); pauseBtn.innerHTML='▶️'; }
         else if (gameState.status==='PAUSED'){ changeStatus('PLAYING'); pauseBtn.innerHTML='⏸️'; }
         playSound('place','E5','32n');
       });
 
-      // Velocidade
       speedBtn.addEventListener('click', ()=>{
-        gameState.speedIndex = (gameState.speedIndex+1) % SPEED_MULTIPLIERS.length;
-        gameState.gameSpeed = SPEED_MULTIPLIERS[gameState.speedIndex];
-        speedBtn.textContent = `${gameState.gameSpeed}x`;
+        gameState.speedIndex=(gameState.speedIndex+1)%SPEED_MULTIPLIERS.length;
+        gameState.gameSpeed=SPEED_MULTIPLIERS[gameState.speedIndex];
+        speedBtn.textContent=`${gameState.gameSpeed}x`;
         playSound('place','G5','32n');
       });
 
-      // Mudo
       muteBtn.addEventListener('click', ()=>{
-        audio.muted = !audio.muted; muteBtn.textContent = audio.muted ? '🔇' : '🔊';
+        audio.muted=!audio.muted; muteBtn.textContent=audio.muted?'🔇':'🔊';
         if (audio.muted) Tone.Transport.pause(); else Tone.Transport.start();
       });
     }
 
-    // ===== Start =====
+    // ---------- Fundos por mapa (pré-renderizados) ----------
+    function renderBackground(){
+      // limpa
+      bgCtx.clearRect(0,0,bgCanvas.width,bgCanvas.height);
+
+      const idx = gameState.mapIndex % MAPS.length;
+      const drawer = [
+        drawDeskWood,        // 0 Escritório Aberto
+        drawServerRoom,      // 1 Sala do Servidor
+        drawKitchenTiles,    // 2 Copa
+        drawCorridorCarpet,  // 3 Corredor Longo
+        drawMeetingRoom,     // 4 Mesa de Reunião
+        drawWarehouse,       // 5 Depósito
+        drawReception,       // 6 Recepção
+        drawCubicles,        // 7 Labirinto de Baias
+        drawBossOffice,      // 8 Sala do Chefe
+        drawRooftop          // 9 Terraço
+      ][idx] || drawDeskWood;
+
+      drawer(bgCtx, bgCanvas.width, bgCanvas.height);
+    }
+
+    // Estéticas simples e leves (canvas puro)
+    function drawDeskWood(ctx,w,h){
+      // madeira clara
+      const g=ctx.createLinearGradient(0,0,0,h);
+      g.addColorStop(0,'#f7e7cd'); g.addColorStop(1,'#ecd3a3');
+      ctx.fillStyle=g; ctx.fillRect(0,0,w,h);
+      // veios
+      ctx.globalAlpha=0.15; ctx.strokeStyle='#b08968'; ctx.lineWidth=3;
+      for(let y=20;y<h;y+=28){ ctx.beginPath(); ctx.moveTo(0,y);
+        for(let x=0;x<w;x+=40){ ctx.quadraticCurveTo(x+20,y+((x/40)%2?3:-3), x+40,y); }
+        ctx.stroke();
+      }
+      ctx.globalAlpha=1;
+      // post-its
+      drawPostIt(ctx, 70, 70, '#fde68a');
+      drawPostIt(ctx, w-140, 50, '#a7f3d0');
+      // teclado estilizado
+      drawKeyboard(ctx, w/2-150, h-90, 300, 60);
+    }
+    function drawServerRoom(ctx,w,h){
+      // piso escuro quadriculado
+      ctx.fillStyle='#0f172a'; ctx.fillRect(0,0,w,h);
+      ctx.globalAlpha=0.2; ctx.strokeStyle='#94a3b8'; ctx.lineWidth=1;
+      for(let x=0;x<w;x+=40){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke(); }
+      for(let y=0;y<h;y+=40){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke(); }
+      ctx.globalAlpha=1;
+      // racks
+      for(let i=0;i<3;i++){ drawRack(ctx, 60+i*200, 80, 120, h-160); }
+    }
+    function drawKitchenTiles(ctx,w,h){
+      // azulejo claro
+      ctx.fillStyle='#e5e7eb'; ctx.fillRect(0,0,w,h);
+      ctx.strokeStyle='#d1d5db'; ctx.lineWidth=1;
+      for(let x=0;x<w;x+=32){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke(); }
+      for(let y=0;y<h;y+=32){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke(); }
+      // manchas de café
+      drawCoffeeRing(ctx, 140, 120, 26);
+      drawCoffeeRing(ctx, w-180, 200, 34);
+      // donuts :)
+      drawDonut(ctx, w/2-60, 90); drawDonut(ctx, w/2+20, 120);
+    }
+    function drawCorridorCarpet(ctx,w,h){
+      // carpete
+      const g=ctx.createLinearGradient(0,0,0,h);
+      g.addColorStop(0,'#d6d3d1'); g.addColorStop(1,'#c4b5fd22');
+      ctx.fillStyle=g; ctx.fillRect(0,0,w,h);
+      // rodapés
+      ctx.fillStyle='#9ca3af'; ctx.fillRect(0,0,w,10); ctx.fillRect(0,h-10,w,10);
+    }
+    function drawMeetingRoom(ctx,w,h){
+      ctx.fillStyle='#e5e7eb'; ctx.fillRect(0,0,w,h);
+      // mesa redonda grande
+      ctx.fillStyle='#8b5a2b';
+      ctx.beginPath(); ctx.ellipse(w/2, h/2, 220, 160, 0, 0, Math.PI*2); ctx.fill();
+      // cadeiras simples
+      for(let i=0;i<8;i++){
+        const a=i*(Math.PI/4), R=220; const x=w/2+Math.cos(a)*(R+80), y=h/2+Math.sin(a)*(R+60);
+        ctx.fillStyle='#374151'; ctx.beginPath(); ctx.ellipse(x,y,22,16,0,0,Math.PI*2); ctx.fill();
+      }
+    }
+    function drawWarehouse(ctx,w,h){
+      ctx.fillStyle='#f1f5f9'; ctx.fillRect(0,0,w,h);
+      // caixas/palete
+      drawBox(ctx, 80, h-150); drawBox(ctx, 150, h-150);
+      drawPallet(ctx, 80, h-90, 160, 50);
+      drawBox(ctx, w-220, h-160); drawBox(ctx, w-150, h-160);
+    }
+    function drawReception(ctx,w,h){
+      ctx.fillStyle='#e2e8f0'; ctx.fillRect(0,0,w,h);
+      // balcão
+      ctx.fillStyle='#94a3b8'; ctx.fillRect(w/2-160, 40, 320, 60);
+      // plantas
+      drawPlant(ctx, 60, h-80); drawPlant(ctx, w-60, h-80);
+    }
+    function drawCubicles(ctx,w,h){
+      ctx.fillStyle='#eef2ff'; ctx.fillRect(0,0,w,h);
+      ctx.strokeStyle='#c7d2fe'; ctx.lineWidth=3;
+      for(let x=80;x<w-80;x+=160){ ctx.strokeRect(x,100,120,100); ctx.strokeRect(x,260,120,100); ctx.strokeRect(x,420,120,100); }
+      // monitores
+      ctx.fillStyle='#1f2937';
+      for(let x=100;x<w-100;x+=160){ ctx.fillRect(x+20,130,60,36); ctx.fillRect(x+20,290,60,36); ctx.fillRect(x+20,450,60,36); }
+    }
+    function drawBossOffice(ctx,w,h){
+      // madeira escura + tapete central
+      const g=ctx.createLinearGradient(0,0,0,h);
+      g.addColorStop(0,'#a16207'); g.addColorStop(1,'#854d0e'); ctx.fillStyle=g; ctx.fillRect(0,0,w,h);
+      ctx.fillStyle='rgba(248,250,252,0.7)'; ctx.fillRect(w/2-180, h/2-110, 360, 220);
+      // mesa do chefe
+      ctx.fillStyle='#3f2d20'; ctx.fillRect(w/2-140, h/2-30, 280, 60);
+      ctx.fillStyle='#111827'; ctx.fillRect(w/2+60, h/2-45, 40, 30);
+    }
+    function drawRooftop(ctx,w,h){
+      ctx.fillStyle='#cbd5e1'; ctx.fillRect(0,0,w,h);
+      // lajotas
+      ctx.strokeStyle='#94a3b8'; ctx.lineWidth=1; ctx.globalAlpha=0.6;
+      for(let x=0;x<w;x+=50){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke(); }
+      for(let y=0;y<h;y+=50){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke(); }
+      ctx.globalAlpha=1;
+      // dutos
+      drawVent(ctx, 120, 120); drawVent(ctx, w-200, 200);
+    }
+
+    // ------ mini-draw helpers ------
+    function drawPostIt(ctx,x,y,color){ ctx.save(); ctx.translate(x,y); ctx.rotate(-0.08);
+      ctx.fillStyle=color; ctx.strokeStyle='#00000018'; ctx.lineWidth=2;
+      ctx.fillRect(0,0,90,70); ctx.strokeRect(0,0,90,70); ctx.restore(); }
+    function drawKeyboard(ctx,x,y,w,h){
+      ctx.fillStyle='#e5e7eb'; ctx.fillRect(x,y,w,h); ctx.strokeStyle='#9ca3af'; ctx.strokeRect(x,y,w,h);
+      ctx.fillStyle='#cbd5e1';
+      const cols=12, rows=4, kW=(w-20)/cols, kH=(h-16)/rows;
+      for(let r=0;r<rows;r++) for(let c=0;c<cols;c++) ctx.fillRect(x+10+c*kW+2,y+8+r*kH+2,kW-6,kH-6);
+    }
+    function drawRack(ctx,x,y,w,h){
+      ctx.fillStyle='#111827'; ctx.fillRect(x,y,w,h);
+      for(let r=0;r<h-20;r+=30){
+        for(let c=0;c<w-20;c+=40){
+          ctx.fillStyle=r%60===0?'#22c55e':'#06b6d4'; ctx.fillRect(x+10+c,y+10+r,6,6);
+          ctx.fillStyle='#f59e0b'; ctx.fillRect(x+20+c,y+10+r,6,6);
+        }
+      }
+    }
+    function drawCoffeeRing(ctx,x,y,r){
+      ctx.strokeStyle='rgba(124,45,18,0.35)'; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(x+8,y+4,r*0.45,0,Math.PI*2); ctx.stroke();
+    }
+    function drawDonut(ctx,x,y){
+      ctx.fillStyle='#f59e0b'; ctx.beginPath(); ctx.arc(x,y,18,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#ef4444'; ctx.beginPath(); ctx.arc(x,y,14,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#f1f5f9'; ctx.beginPath(); ctx.arc(x,y,7,0,Math.PI*2); ctx.fill();
+    }
+    function drawBox(ctx,x,y){ ctx.fillStyle='#f59e0b'; ctx.fillRect(x,y,60,50); ctx.strokeStyle='#b45309'; ctx.strokeRect(x,y,60,50); }
+    function drawPallet(ctx,x,y,w,h){ ctx.fillStyle='#78350f'; ctx.fillRect(x,y,w,h); ctx.fillStyle='#92400e';
+      for(let i=0;i<w;i+=40) ctx.fillRect(x+i+6,y+6,24,h-12); }
+    function drawPlant(ctx,x,y){ ctx.fillStyle='#166534'; ctx.beginPath(); ctx.ellipse(x,y,18,26,0,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#0ea5e9'; ctx.fillRect(x-8,y+26,16,12); }
+    function drawVent(ctx,x,y){ ctx.fillStyle='#64748b'; ctx.fillRect(x,y,120,60); ctx.fillStyle='#334155';
+      for(let i=0;i<5;i++) ctx.fillRect(x+10,y+8+i*10,100,6); }
+
+    // ---------- Inicialização ----------
     init();
   </script>
 </body>
