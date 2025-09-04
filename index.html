@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
     <style>
         body {
             background-color: #f3f4f6; /* cinza claro de fundo */
@@ -101,8 +102,9 @@
         <div class="flex gap-2 mt-4">
             <button id="start-wave-btn" class="w-full bg-green-500 hover:bg-green-600 text-white text-xl font-bold py-3 rounded-lg shadow-md transition-transform transform hover:scale-105">INICIAR ONDA</button>
             <div class="flex-shrink-0 flex gap-2">
-                <button id="pause-btn" class="w-16 bg-gray-500 hover:bg-gray-600 text-white text-2xl font-bold py-3 rounded-lg shadow-md transition-transform transform hover:scale-105" disabled>⏸️</button>
-                <button id="speed-btn" class="w-16 bg-indigo-500 hover:bg-indigo-600 text-white text-xl font-bold py-3 rounded-lg shadow-md transition-transform transform hover:scale-105">1x</button>
+                <button id="pause-btn" class="w-12 bg-gray-500 hover:bg-gray-600 text-white text-2xl font-bold py-3 rounded-lg shadow-md transition-transform transform hover:scale-105" disabled>⏸️</button>
+                <button id="speed-btn" class="w-12 bg-indigo-500 hover:bg-indigo-600 text-white text-xl font-bold py-3 rounded-lg shadow-md transition-transform transform hover:scale-105">1x</button>
+                <button id="mute-btn" class="w-12 bg-yellow-500 hover:bg-yellow-600 text-white text-2xl font-bold py-3 rounded-lg shadow-md transition-transform transform hover:scale-105">🔊</button>
             </div>
         </div>
     </div>
@@ -125,6 +127,13 @@
         const ASSETS = {
             towers: {},
             enemies: {},
+        };
+
+        const audio = {
+            ready: false,
+            muted: false,
+            synths: {},
+            music: null,
         };
 
         function createSvgImage(svgString) {
@@ -160,7 +169,6 @@
                 createSvgImage(`<svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><g transform="translate(20,20) rotate(45)"><rect x="-12" y="-18" width="24" height="36" rx="5" fill="#111827"/><rect x="-10" y="-16" width="20" height="14" fill="#a7f3d0"/><rect x="-10" y="-1" width="20" height="5" fill="#1f2937"/><path d="M-10 6 L10 6 L10 18 L-10 18Z" fill="#374151" /><circle cx="0" cy="13" r="10" fill="#b91c1c"/><circle cx="0" cy="13" r="5" fill="#fca5a5"/></g></svg>`),
             ];
 
-            // Inimigos
             ASSETS.enemies.bug = createSvgImage('<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z" fill="#22c55e"/><path d="M12 2v20" stroke="#166534" stroke-width="1"/><path d="M9.5 8a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm5 0a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" fill="#14532d"/><path d="M7 14s-2 2-4 2m14-2s2 2 4 2M7 10s-2-2-4-2m14 2s2-2 4-2" stroke="#14532d" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>');
             ASSETS.enemies.glitch = createSvgImage(`<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M4 4 L20 4 L20 20 L4 20 Z" fill="#8b5cf6"/><rect x="6" y="9" width="4" height="6" fill="white"/><rect x="14" y="9" width="4" height="6" fill="white"/><rect x="7" y="10" width="2" height="4" fill="black"/><rect x="15" y="10" width="2" height="4" fill="black"/></svg>`);
             ASSETS.enemies.crash = createSvgImage(`<svg viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="18" r="14" fill="#f97316"/><path d="M10 12 L26 28 M10 28 L26 12" stroke="#9a3412" stroke-width="4"/><circle cx="15" cy="15" r="3" fill="white"/><circle cx="21" cy="15" r="3" fill="white"/><circle cx="15" cy="15" r="1.5" fill="black"/><circle cx="21" cy="15" r="1.5" fill="black"/></svg>`);
@@ -242,6 +250,7 @@
         const sellBtn = document.getElementById('sell-btn');
         const pauseBtn = document.getElementById('pause-btn');
         const speedBtn = document.getElementById('speed-btn');
+        const muteBtn = document.getElementById('mute-btn');
 
         // --- DEFINIÇÕES DE DIFICULDADE, TORRES, INIMIGOS, MAPAS E ONDAS ---
         const DIFFICULTY_SETTINGS = {
@@ -345,6 +354,7 @@
                 const path = MAPS[gameState.mapIndex].path;
                 if (this.pathIndex >= path.length - 1) {
                     gameState.health--;
+                    playSound('error', 'A2');
                     return false;
                 }
 
@@ -384,6 +394,7 @@
 
             takeDamage(amount) {
                 this.health -= amount;
+                playSound('hit', 'G2', '32n');
                 if (this.health <= 0) {
                     gameState.staples += this.spec.staples;
                     return false;
@@ -451,6 +462,8 @@
 
             shoot() {
                 if (!this.target) return;
+                const note = this.type === 'tack' ? 'G5' : this.type === 'stapler' ? 'C4' : this.type === 'rubber_band' ? 'A3' : 'B5';
+                playSound('shoot', note);
                 gameState.projectiles.push(new Projectile(this.x, this.y, this.target, this));
             }
 
@@ -544,6 +557,7 @@
             preloadAssets(() => {
                 setupEventListeners();
                 showDifficultySelection();
+                gameLoop(); // Inicia o loop de desenho
             });
         }
 
@@ -738,7 +752,7 @@
         function startGame(difficulty) {
             gameState.difficulty = DIFFICULTY_SETTINGS[difficulty];
             resetGame();
-            gameLoop();
+            if (!audio.ready) initAudio();
         }
 
         function resetGame() {
@@ -760,6 +774,30 @@
             pauseBtn.disabled = true;
             populateTowerShop();
             changeStatus('PLAYING');
+        }
+
+        // --- FUNÇÕES DE ÁUDIO ---
+        function initAudio() {
+            if (audio.ready) return;
+            Tone.start();
+            audio.synths.shoot = new Tone.Synth({ volume: -15, oscillator: { type: 'square' }, envelope: { attack: 0.01, decay: 0.1, sustain: 0.1, release: 0.1 } }).toDestination();
+            audio.synths.place = new Tone.Synth({ volume: -10, oscillator: { type: 'sine' }, envelope: { attack: 0.01, decay: 0.2, sustain: 0, release: 0.2 } }).toDestination();
+            audio.synths.upgrade = new Tone.PluckSynth({ volume: -5 }).toDestination();
+            audio.synths.error = new Tone.Synth({ volume: -10, oscillator: { type: 'triangle' }, envelope: { attack: 0.01, decay: 0.3, sustain: 0, release: 0.1 } }).toDestination();
+            audio.synths.hit = new Tone.MembraneSynth({ volume: -20, pitchDecay: 0.01, octaves: 2, envelope: { attack: 0.001, decay: 0.1, sustain: 0 } }).toDestination();
+            audio.music = new Tone.Loop(time => {
+                audio.synths.place.triggerAttackRelease("C2", "8n", time);
+                audio.synths.place.triggerAttackRelease("G2", "8n", time + Tone.Time("8n"));
+            }, "1n").start(0);
+            Tone.Transport.start();
+            audio.ready = true;
+        }
+
+        function playSound(synthName, note, duration = '16n') {
+            if (!audio.ready || audio.muted) return;
+            if (audio.synths[synthName]) {
+                audio.synths[synthName].triggerAttackRelease(note, duration);
+            }
         }
 
         // --- FUNÇÕES DE UI E UTILITÁRIAS ---
@@ -927,6 +965,7 @@
                     if (gameState.staples >= cost) {
                         gameState.towers.push(new Tower(gridX, gridY, gameState.selectedTowerToPlace));
                         gameState.staples -= cost;
+                        playSound('place', 'C5');
                         deselectAll();
                     }
                 } else {
@@ -951,6 +990,7 @@
                 if (nextUpgrade && gameState.staples >= upgradeCost && tower.level < tower.spec.upgrades.length -1) {
                     gameState.staples -= upgradeCost;
                     tower.level++;
+                    playSound('upgrade', 'E6');
                     updateUI();
                 }
             });
@@ -961,6 +1001,7 @@
                 const sellValue = Math.floor(getTowerValue(tower) * 0.75);
                 gameState.staples += sellValue;
                 gameState.towers = gameState.towers.filter(t => t !== tower);
+                playSound('place', 'A4');
                 deselectAll();
             });
 
@@ -974,12 +1015,24 @@
                     changeStatus('PLAYING');
                     pauseBtn.innerHTML = '⏸️';
                 }
+                 playSound('place', 'E5', '32n');
             });
 
             speedBtn.addEventListener('click', () => {
                 gameState.speedIndex = (gameState.speedIndex + 1) % SPEED_MULTIPLIERS.length;
                 gameState.gameSpeed = SPEED_MULTIPLIERS[gameState.speedIndex];
                 speedBtn.textContent = `${gameState.gameSpeed}x`;
+                playSound('place', 'G5', '32n');
+            });
+
+            muteBtn.addEventListener('click', () => {
+                audio.muted = !audio.muted;
+                muteBtn.textContent = audio.muted ? '🔇' : '🔊';
+                if(audio.muted) {
+                    Tone.Transport.pause();
+                } else {
+                    Tone.Transport.start();
+                }
             });
         }
 
