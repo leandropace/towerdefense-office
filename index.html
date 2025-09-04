@@ -134,6 +134,8 @@
             muted: false,
             synths: {},
             music: null,
+            cooldowns: { hit: 0 },
+            cooldownTime: 4, // frames
         };
 
         function createSvgImage(svgString) {
@@ -173,7 +175,6 @@
             ASSETS.enemies.glitch = createSvgImage(`<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M4 4 L20 4 L20 20 L4 20 Z" fill="#8b5cf6"/><rect x="6" y="9" width="4" height="6" fill="white"/><rect x="14" y="9" width="4" height="6" fill="white"/><rect x="7" y="10" width="2" height="4" fill="black"/><rect x="15" y="10" width="2" height="4" fill="black"/></svg>`);
             ASSETS.enemies.crash = createSvgImage(`<svg viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="18" r="14" fill="#f97316"/><path d="M10 12 L26 28 M10 28 L26 12" stroke="#9a3412" stroke-width="4"/><circle cx="15" cy="15" r="3" fill="white"/><circle cx="21" cy="15" r="3" fill="white"/><circle cx="15" cy="15" r="1.5" fill="black"/><circle cx="21" cy="15" r="1.5" fill="black"/></svg>`);
             ASSETS.enemies.boss = createSvgImage(`<svg viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg"><path d="M25 2 C12 2 2 12 2 25 C2 38 12 48 25 48 S48 38 48 25 C48 12 38 2 25 2Z" fill="#be123c"/><path d="M15 15 L22 25 L15 35 M35 15 L28 25 L35 35" stroke="white" stroke-width="4" fill="none"/><circle cx="25" cy="25" r="5" fill="#fca5a5"/><circle cx="25" cy="25" r="2" fill="#991b1b"/></svg>`);
-
         }
 
         function preloadAssets(callback) {
@@ -571,6 +572,13 @@
 
         function update() {
             if (gameState.status !== 'PLAYING') return;
+            
+            // Update audio cooldowns
+            for (const key in audio.cooldowns) {
+                if (audio.cooldowns[key] > 0) {
+                    audio.cooldowns[key]--;
+                }
+            }
 
             if(gameState.waveInProgress) {
                 if(gameState.spawnTimer > 0) gameState.spawnTimer--;
@@ -795,8 +803,13 @@
 
         function playSound(synthName, note, duration = '16n') {
             if (!audio.ready || audio.muted) return;
+            if (audio.cooldowns[synthName] && audio.cooldowns[synthName] > 0) return;
+
             if (audio.synths[synthName]) {
                 audio.synths[synthName].triggerAttackRelease(note, duration);
+                if (audio.cooldowns.hasOwnProperty(synthName)) {
+                     audio.cooldowns[synthName] = audio.cooldownTime;
+                }
             }
         }
 
