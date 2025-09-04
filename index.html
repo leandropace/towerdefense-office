@@ -134,8 +134,8 @@
             muted: false,
             synths: {},
             music: null,
-            cooldowns: { hit: 0 },
-            cooldownTime: 4, // frames
+            lastHitSoundTime: 0,
+            hitSoundInterval: 0.05, // Segundos
         };
 
         function createSvgImage(svgString) {
@@ -395,7 +395,7 @@
 
             takeDamage(amount) {
                 this.health -= amount;
-                playSound('hit', 'G2', '32n');
+                if (amount > 0) playSound('hit', 'G2', '32n');
                 if (this.health <= 0) {
                     gameState.staples += this.spec.staples;
                     return false;
@@ -558,7 +558,7 @@
             preloadAssets(() => {
                 setupEventListeners();
                 showDifficultySelection();
-                gameLoop(); // Inicia o loop de desenho
+                gameLoop();
             });
         }
 
@@ -572,13 +572,6 @@
 
         function update() {
             if (gameState.status !== 'PLAYING') return;
-            
-            // Update audio cooldowns
-            for (const key in audio.cooldowns) {
-                if (audio.cooldowns[key] > 0) {
-                    audio.cooldowns[key]--;
-                }
-            }
 
             if(gameState.waveInProgress) {
                 if(gameState.spawnTimer > 0) gameState.spawnTimer--;
@@ -803,13 +796,17 @@
 
         function playSound(synthName, note, duration = '16n') {
             if (!audio.ready || audio.muted) return;
-            if (audio.cooldowns[synthName] && audio.cooldowns[synthName] > 0) return;
-
+            
+            if (synthName === 'hit') {
+                const now = Tone.now();
+                if (now < audio.lastHitSoundTime + audio.hitSoundInterval) {
+                    return; // Cooldown ativo
+                }
+                audio.lastHitSoundTime = now;
+            }
+            
             if (audio.synths[synthName]) {
                 audio.synths[synthName].triggerAttackRelease(note, duration);
-                if (audio.cooldowns.hasOwnProperty(synthName)) {
-                     audio.cooldowns[synthName] = audio.cooldownTime;
-                }
             }
         }
 
