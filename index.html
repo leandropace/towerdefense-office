@@ -102,7 +102,6 @@
     // ---------- Helpers ----------
     function createSvgImage(svg){ const img=new Image(); img.src='data:image/svg+xml;base64,'+btoa(svg); return img; }
     function clamp(v,min,max){ return v<min?min: v>max?max: v; }
-    function distSq(a,b){ const dx=a.x-b.x, dy=a.y-b.y; return dx*dx + dy*dy; }
     function pointSegmentDistance(x,y,x1,y1,x2,y2){
       const A=x-x1, B=y-y1, C=x2-x1, D=y2-y1;
       const dot=A*C+B*D, len=C*C+D*D;
@@ -114,7 +113,7 @@
     }
 
     function defineAssets(){
-      // Torres (SVGs simples)
+      // Torres
       ASSETS.towers.tack = [
         createSvgImage(`<svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><g transform="translate(20,20)"><circle r="16" fill="#d1d5db"/><path d="M0 -14 L-4 4 L4 4 Z" fill="#ef4444"/><circle cy="-15" r="5" fill="#f87171"/></g></svg>`),
         createSvgImage(`<svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><g transform="translate(20,20)"><circle r="17" fill="#9ca3af"/><g><path d="M0 -15 L-4 4 L4 4 Z" fill="#ef4444"/><circle cy="-16" r="5" fill="#f87171"/></g><g transform="rotate(120)"><path d="M0 -15 L-4 4 L4 4 Z" fill="#ef4444"/><circle cy="-16" r="5" fill="#f87171"/></g><g transform="rotate(240)"><path d="M0 -15 L-4 4 L4 4 Z" fill="#ef4444"/><circle cy="-16" r="5" fill="#f87171"/></g></g></svg>`),
@@ -141,6 +140,7 @@
         createSvgImage(`<svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><g transform="translate(20,20) rotate(45)"><rect x="-12" y="-18" width="24" height="36" rx="5" fill="#111827"/><rect x="-10" y="-16" width="20" height="14" fill="#a7f3d0"/><rect x="-10" y="-1" width="20" height="5" fill="#1f2937"/><path d="M-10 6 H10 V18 H-10 Z" fill="#374151"/><circle cy="13" r="10" fill="#b91c1c"/><circle cy="13" r="5" fill="#fca5a5"/></g></svg>`)
       ];
 
+      // Inimigos
       ASSETS.enemies.bug    = createSvgImage('<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z" fill="#22c55e"/><path d="M12 2v20" stroke="#166534" stroke-width="1"/><path d="M9.5 8a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm5 0a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" fill="#14532d"/><path d="M7 14s-2 2-4 2m14-2s2 2 4 2M7 10s-2-2-4-2m14 2s2-2 4-2" stroke="#14532d" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>');
       ASSETS.enemies.glitch = createSvgImage('<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M4 4H20V20H4z" fill="#8b5cf6"/><rect x="6" y="9" width="4" height="6" fill="#fff"/><rect x="14" y="9" width="4" height="6" fill="#fff"/><rect x="7" y="10" width="2" height="4" fill="#000"/><rect x="15" y="10" width="2" height="4" fill="#000"/></svg>');
       ASSETS.enemies.crash  = createSvgImage('<svg viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="18" r="14" fill="#f97316"/><path d="M10 12 L26 28 M10 28 L26 12" stroke="#9a3412" stroke-width="4"/><circle cx="15" cy="15" r="3" fill="#fff"/><circle cx="21" cy="15" r="3" fill="#fff"/><circle cx="15" cy="15" r="1.5" fill="#000"/><circle cx="21" cy="15" r="1.5" fill="#000"/></svg>');
@@ -211,13 +211,13 @@
       { name:'Terraço',             path:[{x:0,y:8},{x:5,y:8},{x:5,y:3},{x:16,y:3},{x:16,y:12},{x:5,y:12},{x:5,y:16}] }
     ];
 
-    // >>> ESTILOS DE CAMINHO POR MAPA (contraste)
+    // >>> ESTILOS DE CAMINHO POR MAPA
     const PATH_STYLES = {
       default: { base: 'rgba(0,0,0,0.05)', inner: 'rgba(0,0,0,0.12)', glow: 0,  arrows: false, arrowColor: '' },
       1:       { base: 'rgba(255,255,255,0.14)', inner: 'rgba(255,255,255,0.38)', glow: 10, arrows: true,  arrowColor: 'rgba(255,255,255,0.85)' } // Sala do Servidor
     };
 
-    // Muitas ondas mas escaláveis
+    // Ondas
     const WAVES=[];
     for (let i=0;i<50;i++){
       const w={enemies:[]}, complexity=Math.floor(i/5);
@@ -231,7 +231,7 @@
     // ---------- Estado ----------
     let gameState = {
       staples:200, health:20, wave:0, mapIndex:0, status:'START',
-      enemies:[], towers:[], projectiles:[], particles:[],
+      enemies:[], towers:[], projectiles:[],
       selectedTowerToPlace:null, selectedPlacedTower:null,
       waveInProgress:false, mouse:{x:0,y:0,down:false},
       currentWave:null, spawnTimer:0, spawnIndex:0,
@@ -302,18 +302,37 @@
         else this.speed = this.baseSpeed;
 
         const path = MAPS[gameState.mapIndex].path;
-        if (this.pathIndex >= path.length-1){
-          gameState.health--; playSound('error','A2'); return false;
+
+        // --- INTEGRADOR DE PASSO: consome toda a velocidade, atravessando quinas sem travar ---
+        let remaining = this.speed;
+        while (remaining > 0) {
+          if (this.pathIndex >= path.length - 1) {
+            gameState.health--; playSound('error','A2'); return false;
+          }
+          const tgt = path[this.pathIndex+1];
+          const tx = tgt.x*TILE_SIZE + TILE_SIZE/2;
+          const ty = tgt.y*TILE_SIZE + TILE_SIZE/2;
+          const dx = tx - this.x;
+          const dy = ty - this.y;
+          const dist = Math.hypot(dx, dy);
+
+          if (dist === 0) { // já exatamente no ponto
+            this.pathIndex++;
+            continue;
+          }
+
+          if (remaining >= dist) {
+            // alcança o ponto e ainda sobra movimento
+            this.x = tx; this.y = ty;
+            remaining -= dist;
+            this.pathIndex++;
+          } else {
+            // avança parcialmente e termina
+            this.x += (dx/dist) * remaining;
+            this.y += (dy/dist) * remaining;
+            remaining = 0;
+          }
         }
-        const tgt = path[this.pathIndex+1];
-        const tx = tgt.x*TILE_SIZE + TILE_SIZE/2;
-        const ty = tgt.y*TILE_SIZE + TILE_SIZE/2;
-
-        const dx=tx-this.x, dy=ty-this.y;
-        const dist=Math.hypot(dx,dy);
-
-        if (dist < this.speed) this.pathIndex++;
-        else { this.x += (dx/dist)*this.speed; this.y += (dy/dist)*this.speed; }
         return true;
       }
       draw(){
@@ -421,7 +440,7 @@
     // ---------- Colocação: impedir em cima do caminho ----------
     function isNearPath(x,y, extra=0){
       const half = TILE_SIZE/2;
-      const thr = half + extra; // distância máxima ao centro da via
+      const thr = half + extra;
       const path = MAPS[gameState.mapIndex].path;
       for (let i=0;i<path.length-1;i++){
         const a=path[i], b=path[i+1];
@@ -429,7 +448,6 @@
         const bx=b.x*TILE_SIZE + TILE_SIZE/2, by=b.y*TILE_SIZE + TILE_SIZE/2;
         if (pointSegmentDistance(x,y,ax,ay,bx,by) <= thr) return true;
       }
-      // protege a “porta” final
       const end = path[path.length-1];
       const rx = end.x*TILE_SIZE - TILE_SIZE, ry = end.y*TILE_SIZE;
       const rw = TILE_SIZE, rh = TILE_SIZE*2;
@@ -461,7 +479,7 @@
       preloadAssets(()=>{
         setupEventListeners();
         showDifficultySelection();
-        renderBackground(); // cria o fundo do mapa atual
+        renderBackground();
         gameLoop();
       });
     }
@@ -476,10 +494,15 @@
         if (gameState.spawnTimer>0) gameState.spawnTimer--;
         else {
           const part = gameState.currentWave.enemies[gameState.spawnIndex];
-          if (part && part.spawned < part.count){
+          if (!part) {
+            // Fim explícito do spawning
+            gameState.spawnIndex = gameState.currentWave.enemies.length;
+          } else if (part.spawned < part.count){
             gameState.enemies.push(new Enemy(part.type));
             part.spawned++; gameState.spawnTimer = part.delay;
-          } else if (part && part.spawned >= part.count) gameState.spawnIndex++;
+          } else {
+            gameState.spawnIndex++;
+          }
         }
       }
 
@@ -526,20 +549,16 @@
 
       drawMapPath();
 
-      // prévia de posicionamento
       if (gameState.selectedTowerToPlace) drawPlacementPreview();
 
-      // torres
       for (let i=0;i<gameState.towers.length;i++) gameState.towers[i].draw();
 
-      // seleção
       if (gameState.selectedPlacedTower){
         gameState.selectedPlacedTower.drawRange();
         ctx.strokeStyle='#3b82f6'; ctx.lineWidth=3;
         ctx.beginPath(); ctx.arc(gameState.selectedPlacedTower.x, gameState.selectedPlacedTower.y, TOWER_RADIUS, 0, Math.PI*2); ctx.stroke();
       }
 
-      // inimigos / projéteis
       for (let i=0;i<gameState.enemies.length;i++) gameState.enemies[i].draw();
       for (let i=0;i<gameState.projectiles.length;i++) gameState.projectiles[i].draw();
 
@@ -552,7 +571,7 @@
       ctx.fillText('JOGO PAUSADO', canvas.width/2, canvas.height/2);
     }
 
-    // >>> NOVA VERSÃO (alto contraste + setas por mapa)
+    // >>> Caminho com alto contraste + setas configuráveis por mapa
     function drawMapPath() {
       const path = MAPS[gameState.mapIndex].path;
       const style = PATH_STYLES[gameState.mapIndex] || PATH_STYLES.default;
@@ -564,7 +583,7 @@
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
 
-      // faixa externa/base (com glow opcional)
+      // base (glow opcional)
       if (style.glow > 0) {
         ctx.shadowBlur = style.glow;
         ctx.shadowColor = style.inner;
@@ -576,7 +595,7 @@
       for (let i = 1; i < path.length; i++) ctx.lineTo(px(path[i]), py(path[i]));
       ctx.stroke();
 
-      // faixa interna (a visível)
+      // faixa interna
       ctx.shadowBlur = 0;
       ctx.strokeStyle = style.inner;
       ctx.lineWidth = TILE_SIZE - 8;
@@ -585,10 +604,8 @@
       for (let i = 1; i < path.length; i++) ctx.lineTo(px(path[i]), py(path[i]));
       ctx.stroke();
 
-      // setas de direção se configurado
-      if (style.arrows) {
-        drawPathArrows(path, style.arrowColor || style.inner, 100, 10);
-      }
+      // setas
+      if (style.arrows) drawPathArrows(path, style.arrowColor || style.inner, 100, 10);
 
       ctx.restore();
 
@@ -616,6 +633,7 @@
         const x2 = cx(path[i + 1]), y2 = cy(path[i + 1]);
         const dx = x2 - x1, dy = y2 - y1;
         const len = Math.hypot(dx, dy);
+        if (len === 0) continue;
         const step = spacing;
         const ux = dx / len, uy = dy / len;
 
@@ -859,7 +877,6 @@
             playSound('error','C3','16n');
           }
         } else {
-          // seleção de torre já colocada
           let clicked=null;
           for (const t of gameState.towers){ if (Math.hypot(t.x-gx, t.y-gy) < TOWER_RADIUS){ clicked=t; break; } }
           gameState.selectedPlacedTower=clicked; updateUI();
