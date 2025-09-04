@@ -103,7 +103,6 @@
     function createSvgImage(svg){ const img=new Image(); img.src='data:image/svg+xml;base64,'+btoa(svg); return img; }
     function clamp(v,min,max){ return v<min?min: v>max?max: v; }
     function distSq(a,b){ const dx=a.x-b.x, dy=a.y-b.y; return dx*dx + dy*dy; }
-    function pointDistSq(x,y,px,py){ const dx=x-px, dy=y-py; return dx*dx + dy*dy; }
     function pointSegmentDistance(x,y,x1,y1,x2,y2){
       const A=x-x1, B=y-y1, C=x2-x1, D=y2-y1;
       const dot=A*C+B*D, len=C*C+D*D;
@@ -212,6 +211,12 @@
       { name:'Terraço',             path:[{x:0,y:8},{x:5,y:8},{x:5,y:3},{x:16,y:3},{x:16,y:12},{x:5,y:12},{x:5,y:16}] }
     ];
 
+    // >>> ESTILOS DE CAMINHO POR MAPA (contraste)
+    const PATH_STYLES = {
+      default: { base: 'rgba(0,0,0,0.05)', inner: 'rgba(0,0,0,0.12)', glow: 0,  arrows: false, arrowColor: '' },
+      1:       { base: 'rgba(255,255,255,0.14)', inner: 'rgba(255,255,255,0.38)', glow: 10, arrows: true,  arrowColor: 'rgba(255,255,255,0.85)' } // Sala do Servidor
+    };
+
     // Muitas ondas mas escaláveis
     const WAVES=[];
     for (let i=0;i<50;i++){
@@ -251,7 +256,7 @@
     const speedBtn=document.getElementById('speed-btn');
     const muteBtn=document.getElementById('mute-btn');
 
-    // ---------- GRID ESPACIAL (para alvo e splash) ----------
+    // ---------- GRID ESPACIAL ----------
     const CELL_SIZE = 80;
     const GRID_COLS = Math.ceil(canvas.width / CELL_SIZE);
     const GRID_ROWS = Math.ceil(canvas.height / CELL_SIZE);
@@ -352,7 +357,6 @@
         }
       }
       findTarget(){
-        // usa grid: só checa inimigos próximos
         const range=this.getStats().range, r2=range*range;
         let best=Infinity, bestE=null;
         forEachEnemyNearCircle(this.x, this.y, range, (e)=>{
@@ -432,7 +436,6 @@
       if (x>=rx-8 && x<=rx+rw+8 && y>=ry-8 && y<=ry+rh+8) return true;
       return false;
     }
-
     function isCollidingTower(x,y){
       for (let i=0;i<gameState.towers.length;i++){
         const t=gameState.towers[i];
@@ -440,15 +443,12 @@
       }
       return false;
     }
-
     function withinBounds(x,y){
       const m=TOWER_RADIUS+2;
       return x>=m && x<=canvas.width-m && y>=m && y<=canvas.height-m;
     }
-
     function canPlaceTower(x,y){
       if (!withinBounds(x,y)) return false;
-      // margem extra para evitar “pegar” na borda da via
       if (isNearPath(x,y, TOWER_RADIUS-2)) return false;
       if (isCollidingTower(x,y)) return false;
       return true;
@@ -500,7 +500,7 @@
       // Torres
       for (let i=0;i<gameState.towers.length;i++) gameState.towers[i].update();
 
-      // Projéteis (uma passada)
+      // Projéteis
       const survivorsP=[];
       for (let i=0;i<gameState.projectiles.length;i++){
         const p=gameState.projectiles[i];
@@ -552,24 +552,91 @@
       ctx.fillText('JOGO PAUSADO', canvas.width/2, canvas.height/2);
     }
 
-    function drawMapPath(){
+    // >>> NOVA VERSÃO (alto contraste + setas por mapa)
+    function drawMapPath() {
       const path = MAPS[gameState.mapIndex].path;
-      ctx.strokeStyle='rgba(0,0,0,0.05)'; ctx.lineWidth=TILE_SIZE; ctx.lineCap='round'; ctx.lineJoin='round';
-      ctx.beginPath();
-      ctx.moveTo(path[0].x*TILE_SIZE + TILE_SIZE/2, path[0].y*TILE_SIZE + TILE_SIZE/2);
-      for (let i=1;i<path.length;i++){
-        ctx.lineTo(path[i].x*TILE_SIZE + TILE_SIZE/2, path[i].y*TILE_SIZE + TILE_SIZE/2);
+      const style = PATH_STYLES[gameState.mapIndex] || PATH_STYLES.default;
+
+      const px = p => p.x * TILE_SIZE + TILE_SIZE / 2;
+      const py = p => p.y * TILE_SIZE + TILE_SIZE / 2;
+
+      ctx.save();
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      // faixa externa/base (com glow opcional)
+      if (style.glow > 0) {
+        ctx.shadowBlur = style.glow;
+        ctx.shadowColor = style.inner;
       }
+      ctx.strokeStyle = style.base;
+      ctx.lineWidth = TILE_SIZE + 6;
+      ctx.beginPath();
+      ctx.moveTo(px(path[0]), py(path[0]));
+      for (let i = 1; i < path.length; i++) ctx.lineTo(px(path[i]), py(path[i]));
       ctx.stroke();
 
-      // “porta” / máquina de café
-      const end = path[path.length-1];
-      ctx.fillStyle='#78350f';
-      ctx.fillRect(end.x*TILE_SIZE - TILE_SIZE, end.y*TILE_SIZE, TILE_SIZE, TILE_SIZE*2);
-      ctx.fillStyle='#1e293b';
-      ctx.fillRect(end.x*TILE_SIZE - TILE_SIZE + 5, end.y*TILE_SIZE + 5, TILE_SIZE - 10, 10);
-      ctx.fillStyle='#f3f4f6';
-      ctx.beginPath(); ctx.arc(end.x*TILE_SIZE - TILE_SIZE/2, end.y*TILE_SIZE + 25, 5, 0, Math.PI*2); ctx.fill();
+      // faixa interna (a visível)
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = style.inner;
+      ctx.lineWidth = TILE_SIZE - 8;
+      ctx.beginPath();
+      ctx.moveTo(px(path[0]), py(path[0]));
+      for (let i = 1; i < path.length; i++) ctx.lineTo(px(path[i]), py(path[i]));
+      ctx.stroke();
+
+      // setas de direção se configurado
+      if (style.arrows) {
+        drawPathArrows(path, style.arrowColor || style.inner, 100, 10);
+      }
+
+      ctx.restore();
+
+      // Porta / máquina de café
+      const endPoint = path[path.length - 1];
+      ctx.fillStyle = '#78350f';
+      ctx.fillRect(endPoint.x * TILE_SIZE - TILE_SIZE, endPoint.y * TILE_SIZE, TILE_SIZE, TILE_SIZE * 2);
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(endPoint.x * TILE_SIZE - TILE_SIZE + 5, endPoint.y * TILE_SIZE + 5, TILE_SIZE - 10, 10);
+      ctx.fillStyle = '#f3f4f6';
+      ctx.beginPath();
+      ctx.arc(endPoint.x * TILE_SIZE - TILE_SIZE / 2, endPoint.y * TILE_SIZE + 25, 5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function drawPathArrows(path, color = 'rgba(255,255,255,0.85)', spacing = 90, size = 9) {
+      const cx = p => p.x * TILE_SIZE + TILE_SIZE / 2;
+      const cy = p => p.y * TILE_SIZE + TILE_SIZE / 2;
+
+      ctx.save();
+      ctx.fillStyle = color;
+
+      for (let i = 0; i < path.length - 1; i++) {
+        const x1 = cx(path[i]),     y1 = cy(path[i]);
+        const x2 = cx(path[i + 1]), y2 = cy(path[i + 1]);
+        const dx = x2 - x1, dy = y2 - y1;
+        const len = Math.hypot(dx, dy);
+        const step = spacing;
+        const ux = dx / len, uy = dy / len;
+
+        for (let s = step * 0.5; s < len; s += step) {
+          const ax = x1 + ux * s;
+          const ay = y1 + uy * s;
+          const ang = Math.atan2(dy, dx);
+
+          ctx.save();
+          ctx.translate(ax, ay);
+          ctx.rotate(ang);
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(-size,  size * 0.6);
+          ctx.lineTo(-size, -size * 0.6);
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+      ctx.restore();
     }
 
     function drawPlacementPreview(){
@@ -580,7 +647,6 @@
       ctx.strokeStyle = can ? 'rgba(34,197,94,0.60)' : 'rgba(239,68,68,0.60)';
       ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(gx, gy, TOWER_RADIUS+2, 0, Math.PI*2); ctx.fill(); ctx.stroke();
-      // alcance da torre selecionada
       const spec = TOWER_SPECS[gameState.selectedTowerToPlace];
       ctx.beginPath(); ctx.arc(gx, gy, spec.upgrades[0].range, 0, Math.PI*2);
       ctx.strokeStyle='rgba(59,130,246,0.25)'; ctx.stroke();
@@ -606,7 +672,7 @@
       if (gameState.wave >= WAVES.length){
         changeStatus('VICTORY'); showModal('Vitória!','Você defendeu a máquina de café!','Jogar Novamente', showDifficultySelection);
       } else if (gameState.wave % 5 === 0 && gameState.mapIndex < MAPS.length-1){
-        // reembolsa 100% do investido ao trocar de mapa
+        // reembolsa 100% ao trocar de mapa
         let refund=0; gameState.towers.forEach(t=>{ refund += getTowerValue(t); });
         gameState.staples += refund; gameState.towers=[]; deselectAll();
 
@@ -838,7 +904,6 @@
 
     // ---------- Fundos por mapa (pré-renderizados) ----------
     function renderBackground(){
-      // limpa
       bgCtx.clearRect(0,0,bgCanvas.width,bgCanvas.height);
 
       const idx = gameState.mapIndex % MAPS.length;
@@ -858,61 +923,48 @@
       drawer(bgCtx, bgCanvas.width, bgCanvas.height);
     }
 
-    // Estéticas simples e leves (canvas puro)
+    // Estéticas simples (canvas puro)
     function drawDeskWood(ctx,w,h){
-      // madeira clara
       const g=ctx.createLinearGradient(0,0,0,h);
       g.addColorStop(0,'#f7e7cd'); g.addColorStop(1,'#ecd3a3');
       ctx.fillStyle=g; ctx.fillRect(0,0,w,h);
-      // veios
       ctx.globalAlpha=0.15; ctx.strokeStyle='#b08968'; ctx.lineWidth=3;
       for(let y=20;y<h;y+=28){ ctx.beginPath(); ctx.moveTo(0,y);
         for(let x=0;x<w;x+=40){ ctx.quadraticCurveTo(x+20,y+((x/40)%2?3:-3), x+40,y); }
         ctx.stroke();
       }
       ctx.globalAlpha=1;
-      // post-its
       drawPostIt(ctx, 70, 70, '#fde68a');
       drawPostIt(ctx, w-140, 50, '#a7f3d0');
-      // teclado estilizado
       drawKeyboard(ctx, w/2-150, h-90, 300, 60);
     }
     function drawServerRoom(ctx,w,h){
-      // piso escuro quadriculado
       ctx.fillStyle='#0f172a'; ctx.fillRect(0,0,w,h);
       ctx.globalAlpha=0.2; ctx.strokeStyle='#94a3b8'; ctx.lineWidth=1;
       for(let x=0;x<w;x+=40){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke(); }
       for(let y=0;y<h;y+=40){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke(); }
       ctx.globalAlpha=1;
-      // racks
       for(let i=0;i<3;i++){ drawRack(ctx, 60+i*200, 80, 120, h-160); }
     }
     function drawKitchenTiles(ctx,w,h){
-      // azulejo claro
       ctx.fillStyle='#e5e7eb'; ctx.fillRect(0,0,w,h);
       ctx.strokeStyle='#d1d5db'; ctx.lineWidth=1;
       for(let x=0;x<w;x+=32){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke(); }
       for(let y=0;y<h;y+=32){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke(); }
-      // manchas de café
       drawCoffeeRing(ctx, 140, 120, 26);
       drawCoffeeRing(ctx, w-180, 200, 34);
-      // donuts :)
       drawDonut(ctx, w/2-60, 90); drawDonut(ctx, w/2+20, 120);
     }
     function drawCorridorCarpet(ctx,w,h){
-      // carpete
       const g=ctx.createLinearGradient(0,0,0,h);
       g.addColorStop(0,'#d6d3d1'); g.addColorStop(1,'#c4b5fd22');
       ctx.fillStyle=g; ctx.fillRect(0,0,w,h);
-      // rodapés
       ctx.fillStyle='#9ca3af'; ctx.fillRect(0,0,w,10); ctx.fillRect(0,h-10,w,10);
     }
     function drawMeetingRoom(ctx,w,h){
       ctx.fillStyle='#e5e7eb'; ctx.fillRect(0,0,w,h);
-      // mesa redonda grande
       ctx.fillStyle='#8b5a2b';
       ctx.beginPath(); ctx.ellipse(w/2, h/2, 220, 160, 0, 0, Math.PI*2); ctx.fill();
-      // cadeiras simples
       for(let i=0;i<8;i++){
         const a=i*(Math.PI/4), R=220; const x=w/2+Math.cos(a)*(R+80), y=h/2+Math.sin(a)*(R+60);
         ctx.fillStyle='#374151'; ctx.beginPath(); ctx.ellipse(x,y,22,16,0,0,Math.PI*2); ctx.fill();
@@ -920,43 +972,35 @@
     }
     function drawWarehouse(ctx,w,h){
       ctx.fillStyle='#f1f5f9'; ctx.fillRect(0,0,w,h);
-      // caixas/palete
       drawBox(ctx, 80, h-150); drawBox(ctx, 150, h-150);
       drawPallet(ctx, 80, h-90, 160, 50);
       drawBox(ctx, w-220, h-160); drawBox(ctx, w-150, h-160);
     }
     function drawReception(ctx,w,h){
       ctx.fillStyle='#e2e8f0'; ctx.fillRect(0,0,w,h);
-      // balcão
       ctx.fillStyle='#94a3b8'; ctx.fillRect(w/2-160, 40, 320, 60);
-      // plantas
       drawPlant(ctx, 60, h-80); drawPlant(ctx, w-60, h-80);
     }
     function drawCubicles(ctx,w,h){
       ctx.fillStyle='#eef2ff'; ctx.fillRect(0,0,w,h);
       ctx.strokeStyle='#c7d2fe'; ctx.lineWidth=3;
       for(let x=80;x<w-80;x+=160){ ctx.strokeRect(x,100,120,100); ctx.strokeRect(x,260,120,100); ctx.strokeRect(x,420,120,100); }
-      // monitores
       ctx.fillStyle='#1f2937';
       for(let x=100;x<w-100;x+=160){ ctx.fillRect(x+20,130,60,36); ctx.fillRect(x+20,290,60,36); ctx.fillRect(x+20,450,60,36); }
     }
     function drawBossOffice(ctx,w,h){
-      // madeira escura + tapete central
       const g=ctx.createLinearGradient(0,0,0,h);
       g.addColorStop(0,'#a16207'); g.addColorStop(1,'#854d0e'); ctx.fillStyle=g; ctx.fillRect(0,0,w,h);
       ctx.fillStyle='rgba(248,250,252,0.7)'; ctx.fillRect(w/2-180, h/2-110, 360, 220);
-      // mesa do chefe
       ctx.fillStyle='#3f2d20'; ctx.fillRect(w/2-140, h/2-30, 280, 60);
       ctx.fillStyle='#111827'; ctx.fillRect(w/2+60, h/2-45, 40, 30);
     }
     function drawRooftop(ctx,w,h){
       ctx.fillStyle='#cbd5e1'; ctx.fillRect(0,0,w,h);
-      // lajotas
       ctx.strokeStyle='#94a3b8'; ctx.lineWidth=1; ctx.globalAlpha=0.6;
       for(let x=0;x<w;x+=50){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke(); }
       for(let y=0;y<h;y+=50){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke(); }
       ctx.globalAlpha=1;
-      // dutos
       drawVent(ctx, 120, 120); drawVent(ctx, w-200, 200);
     }
 
