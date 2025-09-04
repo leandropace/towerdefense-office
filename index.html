@@ -522,7 +522,7 @@
             hitTarget() {
                 if (this.stats.splash) {
                     gameState.enemies.forEach(enemy => {
-                        if (getDistance(this.target, enemy) <= this.stats.splash) {
+                        if (getDistance({x: this.x, y: this.y}, enemy) <= this.stats.splash) {
                             enemy.takeDamage(this.stats.damage);
                         }
                     });
